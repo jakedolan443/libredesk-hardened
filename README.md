@@ -117,4 +117,3 @@ The backend is written in Go and the frontend is Vue.js 3 with Shadcn UI.
 
 
 ## Translators
-You can help translate libredesk into your language on [Crowdin](https://crowdin.com/project/libredesk).  
