@@ -3,7 +3,7 @@ name: Upstream release sync
 on:
   schedule:
     # GitHub Actions cannot receive release events from a different repository,
-    # so poll the upstream releases endpoint six times per day.
+    # so poll the upstream releases endpoint four times per day.
     - cron: "17 */6 * * *"
   workflow_dispatch:
 
@@ -21,7 +21,6 @@ env:
 
 jobs:
   sync:
-    if: github.repository == 'jakedolan443/libredesk'
     runs-on: ubuntu-latest
 
     steps:
