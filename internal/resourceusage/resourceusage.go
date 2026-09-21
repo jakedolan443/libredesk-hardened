@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -131,18 +130,12 @@ func collectDisk(path string) DiskUsage {
 		result.Path = absolutePath
 	}
 
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(path, &stat); err != nil {
+	total, available, err := collectFilesystemUsage(path)
+	if err != nil {
 		result.Error = err.Error()
 		result.UsagePercent = nil
 		return result
 	}
-
-	blockSize := uint64(stat.Bsize)
-	total := stat.Blocks * blockSize
-	// Statfs_t uses different integer types for Bavail across supported OSes.
-	// Convert before multiplying so the cross-platform release builds agree.
-	available := uint64(stat.Bavail) * blockSize
 	used := uint64(0)
 	if total > available {
 		used = total - available
