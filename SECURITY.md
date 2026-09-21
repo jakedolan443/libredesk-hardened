@@ -1,6 +1,6 @@
 # Security Reports
 
-Report vulnerabilities privately via GitHub Security Advisories: https://github.com/abhinavxd/libredesk/security/advisories
+Report vulnerabilities privately via GitHub Security Advisories: https://github.com/jakedolan443/libredesk-hardened/security/advisories
 
 ## Threat model
 
