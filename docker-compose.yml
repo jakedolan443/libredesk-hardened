@@ -1,7 +1,7 @@
 services:
   # Libredesk app
   app:
-    image: libredesk/libredesk:latest
+    image: ghcr.io/jakedolan443/libredesk-hardened:latest
     container_name: libredesk_app
     restart: unless-stopped
     ports:

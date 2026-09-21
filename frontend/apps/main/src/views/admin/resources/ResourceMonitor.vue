@@ -95,7 +95,7 @@
             :percent="usage.memory.usage_percent"
             :detail="
               usage.memory.peak_bytes
-                ? `${t('admin.systemResources.used')}: ${formatBytes(usage.memory.current_bytes)} · Peak: ${formatBytes(usage.memory.peak_bytes)}`
+                ? `${t('admin.systemResources.used')}: ${formatBytes(usage.memory.current_bytes)} Peak: ${formatBytes(usage.memory.peak_bytes)}`
                 : ''
             "
           />
