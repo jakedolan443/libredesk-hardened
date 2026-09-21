@@ -140,7 +140,9 @@ func collectDisk(path string) DiskUsage {
 
 	blockSize := uint64(stat.Bsize)
 	total := stat.Blocks * blockSize
-	available := stat.Bavail * blockSize
+	// Statfs_t uses different integer types for Bavail across supported OSes.
+	// Convert before multiplying so the cross-platform release builds agree.
+	available := uint64(stat.Bavail) * blockSize
 	used := uint64(0)
 	if total > available {
 		used = total - available
