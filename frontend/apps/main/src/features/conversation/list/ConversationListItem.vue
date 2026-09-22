@@ -13,7 +13,12 @@
         <div class="flex items-start gap-2">
           <!-- Avatar with channel indicator (checkbox replaces it once selected) -->
           <div class="relative flex-shrink-0 w-10 h-10">
-            <div class="transition-opacity" :class="avatarOpacityClass" :aria-hidden="showCheckbox">
+            <div
+              class="transition-opacity"
+              :class="[avatarOpacityClass, { 'cursor-pointer': canBulkAct }]"
+              :aria-hidden="showCheckbox"
+              @click="handleAvatarClick"
+            >
               <Avatar class="w-10 h-10 rounded-full">
                 <AvatarImage :src="conversation.contact.avatar_url || ''" class="object-cover" />
                 <AvatarFallback>
@@ -287,6 +292,13 @@ const avatarOpacityClass = computed(() => {
 
 const handleCheckboxClick = (event) => {
   conversationStore.toggleSelect(props.conversation.uuid, event.shiftKey)
+}
+
+const handleAvatarClick = (event) => {
+  if (!canBulkAct.value) return
+  event.preventDefault()
+  event.stopPropagation()
+  handleCheckboxClick(event)
 }
 
 const handleSelect = () => {

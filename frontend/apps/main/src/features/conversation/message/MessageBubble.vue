@@ -100,7 +100,7 @@
         >
           <!-- Conventional email header: transport details and date sit above the body. -->
           <div v-if="isEmailMessage" class="email-message-header">
-            <MessageEnvelope v-if="showEnvelope" :message="message" class="mb-0 min-w-0 flex-1" />
+            <MessageEnvelope :message="message" class="mb-0 min-w-0 flex-1" />
             <Tooltip>
               <TooltipTrigger>
                 <time class="email-message-date" :datetime="message.created_at">
