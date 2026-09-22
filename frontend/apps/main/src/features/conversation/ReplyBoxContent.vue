@@ -118,7 +118,7 @@
 
     <!-- Editor menu bar with send button -->
     <ReplyBoxMenuBar
-      class="mt-2"
+      class="mt-2 shrink-0"
       :isFullscreen="isFullscreen"
       :handleFileUpload="handleFileUpload"
       :isSending="isSending"
