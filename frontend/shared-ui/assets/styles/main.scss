@@ -120,8 +120,8 @@
     }
 
     // Mention styling — vue-letter scopes classes as msg_XXX_ld-mention
-    [class$="_ld-mention"],
-    [class$="_ld-conversation-reference"],
+    [class$='_ld-mention'],
+    [class$='_ld-conversation-reference'],
     .ld-mention,
     .ld-conversation-reference {
       background-color: hsl(var(--primary) / 0.1);
@@ -134,22 +134,22 @@
   :root {
     --sidebar-background: 0 0% 99.2%;
     --sidebar-foreground: 0 0% 1%;
-    --sidebar-primary: 152 39% 30%;
+    --sidebar-primary: 158 45% 27%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 95%;
     --sidebar-accent-foreground: 0 0% 1%;
     --sidebar-border: 0 0% 91%;
-    --sidebar-ring: 151 41% 45%;
+    --sidebar-ring: 158 42% 40%;
   }
   .dark {
     --sidebar-background: 120 2.6% 7.6%;
     --sidebar-foreground: 150 6% 93%;
-    --sidebar-primary: 152 58% 54%;
+    --sidebar-primary: 158 43% 43%;
     --sidebar-primary-foreground: 120 2.6% 7.6%;
     --sidebar-accent: 150 3% 15%;
     --sidebar-accent-foreground: 150 6% 93%;
     --sidebar-border: 150 2% 16%;
-    --sidebar-ring: 152 45% 33%;
+    --sidebar-ring: 158 40% 32%;
   }
 
   :root {
@@ -176,7 +176,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 1%;
 
-    --primary: 152 39% 30%;
+    --primary: 158 45% 27%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;
@@ -191,7 +191,7 @@
     --destructive: 2 47% 46%;
     --destructive-foreground: 9 100% 99%;
 
-    --success: 142 72% 37%;
+    --success: 158 51% 32%;
     --success-foreground: 0 0% 98%;
 
     --warning: 39 85% 43%;
@@ -202,7 +202,7 @@
 
     --border: 0 0% 91%;
     --input: 0 0% 85%;
-    --ring: 151 41% 45%;
+    --ring: 158 42% 40%;
     --radius: 0.5rem;
     --private: 35 90% 94%;
     --canvas: 0 0% 82%;
@@ -219,7 +219,7 @@
     --popover: 120 2% 12%;
     --popover-foreground: 150 6% 93%;
 
-    --primary: 152 58% 54%;
+    --primary: 158 43% 43%;
     --primary-foreground: 120 2.6% 7.6%;
 
     --secondary: 150 3% 12%;
@@ -234,7 +234,7 @@
     --destructive: 4 92% 74%;
     --destructive-foreground: 12 38% 3%;
 
-    --success: 142 55% 55%;
+    --success: 158 44% 49%;
     --success-foreground: 142 40% 10%;
 
     --warning: 36 87% 62%;
@@ -245,7 +245,7 @@
 
     --border: 150 2% 16%;
     --input: 150 2% 19%;
-    --ring: 152 45% 33%;
+    --ring: 158 40% 32%;
     --private: 30 35% 18%;
     --canvas: 120 3% 4%;
   }
@@ -274,9 +274,15 @@
   }
 }
 
+// Email transport details live beside the bubble, so email content can use the
+// available width without a second padded header inside the message container.
+.message-bubble.email-message-bubble {
+  @apply px-2 pt-1.5 pb-2;
+}
+
 // Sender colours are only legible against white, so incoming email HTML is not themed.
 .dark .email-light-canvas {
-  @apply p-2 rounded border border-border;
+  @apply p-1.5 rounded border border-border;
 
   color-scheme: light;
   background: #fff;
@@ -373,17 +379,17 @@
   // siblings (no wrapping element), so we hide the marker AND everything
   // after it. Outlook always top-posts, so trailing siblings are quote.
   blockquote,
-  [id$="_divRplyFwdMsg"],
-  [id$="_divRplyFwdMsg"] ~ *,
-  [id$="_appendonsend"],
-  [id$="_appendonsend"] ~ *,
-  [id$="_OLK_SRC_BODY_SECTION"],
-  [id$="_OLK_SRC_BODY_SECTION"] ~ *,
-  [class*="_OutlookMessageHeader"],
-  [class*="_OutlookMessageHeader"] ~ *,
-  [class*="_yahoo_quoted"],
-  [class*="_gmail_quote_container"],
-  [class*="_protonmail_quote"] {
+  [id$='_divRplyFwdMsg'],
+  [id$='_divRplyFwdMsg'] ~ *,
+  [id$='_appendonsend'],
+  [id$='_appendonsend'] ~ *,
+  [id$='_OLK_SRC_BODY_SECTION'],
+  [id$='_OLK_SRC_BODY_SECTION'] ~ *,
+  [class*='_OutlookMessageHeader'],
+  [class*='_OutlookMessageHeader'] ~ *,
+  [class*='_yahoo_quoted'],
+  [class*='_gmail_quote_container'],
+  [class*='_protonmail_quote'] {
     @apply hidden;
   }
 }
@@ -436,6 +442,6 @@
  * but ml-[3.2rem] offset causes part to remain visible in the app's padding gap.
  * Push it further left to fully hide it.
  */
-[data-state="collapsed"][data-collapsible="offcanvas"] .sidebar-secondary {
+[data-state='collapsed'][data-collapsible='offcanvas'] .sidebar-secondary {
   left: calc((var(--sidebar-width) + 3.5rem) * -1.4) !important;
 }

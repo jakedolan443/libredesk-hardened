@@ -79,15 +79,33 @@
     </div>
 
     <!-- Messages & reply box -->
-    <div class="flex flex-col flex-grow overflow-hidden">
-      <MessageList class="flex-1 overflow-y-auto" />
-      <ReplyBox v-if="canCompose" />
+    <div v-if="canCompose" class="flex min-h-0 flex-grow flex-col overflow-hidden">
+      <ResizablePanelGroup
+        direction="vertical"
+        class="min-h-0 flex-1"
+        @layout="onConversationLayout"
+      >
+        <ResizablePanel :default-size="panelSizes[0]" :min-size="45">
+          <div class="h-full min-h-0 overflow-hidden">
+            <MessageList class="h-full overflow-y-auto" />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle
+          withHandle
+          class="h-2 border-0 bg-transparent transition-colors hover:bg-primary/10"
+        />
+        <ResizablePanel :default-size="panelSizes[1]" :min-size="14" :max-size="55">
+          <ReplyBox />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
+    <MessageList v-else class="min-h-0 flex-1 overflow-y-auto" />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useStorage } from '@vueuse/core'
 import { useConversationStore } from '@main/stores/conversation'
 import { useUserStore } from '@main/stores/user'
 import { Clock, MoreHorizontal, ChevronLeft, PanelRight } from 'lucide-vue-next'
@@ -104,6 +122,11 @@ import { formatMessageTimestamp } from '@shared-ui/utils/datetime.js'
 import { Button } from '@shared-ui/components/ui/button'
 import MessageList from '@/features/conversation/message/MessageList.vue'
 import ReplyBox from './ReplyBox.vue'
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle
+} from '@shared-ui/components/ui/resizable'
 import { EMITTER_EVENTS, CONVERSATION_ACTIONS } from '@main/constants/emitterEvents.js'
 import { useCommandPalette } from '@/features/command/useCommandPalette'
 import { SNOOZE_COMMAND } from '@/features/command/providers/useConversationCommands'
@@ -125,6 +148,11 @@ const isMobile = useIsMobile()
 const canCompose = computed(
   () => userStore.can(perms.MESSAGES_WRITE) || userStore.can(perms.MESSAGES_WRITE_PRIVATE)
 )
+const panelSizes = useStorage('conversationComposerPanelSizes', [74, 26])
+
+const onConversationLayout = (sizes) => {
+  if (sizes.length === 2) panelSizes.value = sizes
+}
 
 // Each detail route is `<list route name>-conversation`.
 const goBackToList = () => {

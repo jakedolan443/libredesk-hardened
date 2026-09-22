@@ -1,22 +1,20 @@
 <template>
-  <div class="mb-1 text-xs space-y-1">
-    <p v-if="message.meta.subject" class="text-foreground">
+  <div class="email-envelope mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+    <span v-if="message.meta.subject" class="basis-full text-foreground font-medium">
       {{ message.meta.subject }}
-    </p>
-    <div class="space-y-0.5">
-      <p v-if="message.meta.from?.length">
-        <span class="text-muted-foreground">From:</span> {{ message.meta.from.join(', ') }}
-      </p>
-      <p v-if="message.meta.to?.length">
-        <span class="text-muted-foreground">To:</span> {{ message.meta.to.join(', ') }}
-      </p>
-      <p v-if="message.meta.cc?.length">
-        <span class="text-muted-foreground">Cc:</span> {{ message.meta.cc.join(', ') }}
-      </p>
-      <p v-if="message.meta.bcc?.length">
-        <span class="text-muted-foreground">Bcc:</span> {{ message.meta.bcc.join(', ') }}
-      </p>
-    </div>
+    </span>
+    <span v-if="message.meta.from?.length" class="whitespace-nowrap">
+      <span class="text-muted-foreground">From:</span> {{ message.meta.from.join(', ') }}
+    </span>
+    <span v-if="message.meta.to?.length" class="whitespace-nowrap">
+      <span class="text-muted-foreground">To:</span> {{ message.meta.to.join(', ') }}
+    </span>
+    <span v-if="message.meta.cc?.length" class="whitespace-nowrap">
+      <span class="text-muted-foreground">Cc:</span> {{ message.meta.cc.join(', ') }}
+    </span>
+    <span v-if="message.meta.bcc?.length" class="whitespace-nowrap">
+      <span class="text-muted-foreground">Bcc:</span> {{ message.meta.bcc.join(', ') }}
+    </span>
   </div>
 </template>
 

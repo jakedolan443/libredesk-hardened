@@ -63,7 +63,7 @@
     </AlertDialogContent>
   </AlertDialog>
 
-  <div class="text-foreground bg-background">
+  <div class="h-full min-h-0 overflow-hidden text-foreground bg-background">
     <!-- Fullscreen editor -->
     <Dialog :open="isEditorFullscreen" @update:open="isEditorFullscreen = false">
       <DialogContent
@@ -139,7 +139,7 @@
 
     <!-- Main Editor non-fullscreen -->
     <div
-      class="bg-background text-card-foreground box m-2 px-2 pt-2 flex flex-col relative"
+      class="bg-background text-card-foreground box m-2 h-[calc(100%-1rem)] min-h-0 px-2 pt-2 flex flex-col relative overflow-hidden"
       :class="{ '!bg-private': messageType === 'private_note', 'ai-generating': isGenerating }"
       v-if="!isCramped && !isEditorFullscreen"
     >

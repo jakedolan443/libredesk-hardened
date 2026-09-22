@@ -1,6 +1,6 @@
 <template>
   <!-- Set fixed width only when not in fullscreen. -->
-  <div class="flex flex-col h-full" :class="{ 'max-h-[600px]': !isFullscreen }">
+  <div class="flex min-h-0 flex-col h-full" :class="{ 'max-h-[600px]': !isFullscreen }">
     <!-- Message type toggle -->
     <div
       class="flex items-center justify-between"
@@ -8,18 +8,10 @@
     >
       <Tabs v-model="messageType" class="rounded-lg">
         <TabsList>
-          <TabsTrigger
-            v-if="canSendReply"
-            value="reply"
-            class="max-md:py-2.5"
-          >
+          <TabsTrigger v-if="canSendReply" value="reply" class="max-md:py-2.5">
             {{ $t('globals.terms.reply') }}
           </TabsTrigger>
-          <TabsTrigger
-            v-if="canSendPrivateNote"
-            value="private_note"
-            class="max-md:py-2.5"
-          >
+          <TabsTrigger v-if="canSendPrivateNote" value="private_note" class="max-md:py-2.5">
             {{ $t('globals.terms.privateNote') }}
           </TabsTrigger>
         </TabsList>
@@ -84,7 +76,7 @@
     </div>
 
     <!-- Main tiptap editor -->
-    <div class="flex-grow flex flex-col overflow-hidden">
+    <div class="flex min-h-0 flex-grow flex-col overflow-hidden">
       <Editor
         ref="editorRef"
         v-model:htmlContent="htmlContent"
@@ -192,13 +184,12 @@ const fetchSuggestions = async (query) => {
     api.getTeamsCompact({ q: query, page_size: MENTION_LIMIT })
   ])
 
-  const users = (agentsResponse?.data?.data || [])
-    .map((u) => ({
-      id: u.id,
-      type: 'agent',
-      label: `${u.first_name} ${u.last_name}`.trim(),
-      avatar_url: u.avatar_url
-    }))
+  const users = (agentsResponse?.data?.data || []).map((u) => ({
+    id: u.id,
+    type: 'agent',
+    label: `${u.first_name} ${u.last_name}`.trim(),
+    avatar_url: u.avatar_url
+  }))
 
   const teams = (teamsResponse?.data?.data || []).map((t) => ({
     id: t.id,
@@ -217,7 +208,10 @@ const getSuggestions = async (query) => {
   return (await debouncedFetchSuggestions(query)) || []
 }
 
-const debouncedFetchConversationSuggestions = useDebounceFn(fetchConversationSuggestions, MENTION_DEBOUNCE_MS)
+const debouncedFetchConversationSuggestions = useDebounceFn(
+  fetchConversationSuggestions,
+  MENTION_DEBOUNCE_MS
+)
 const fetchLatestConversationSuggestions = createLatestConversationSuggestionFetcher(
   debouncedFetchConversationSuggestions
 )

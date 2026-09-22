@@ -79,142 +79,140 @@
           </DropdownMenu>
         </div>
 
-        <div
-          class="flex flex-col justify-end message-bubble"
-          :class="bubbleClasses"
-        >
-          <div v-if="isDeleted" class="text-sm italic text-muted-foreground">
-            {{ message.content }}
-          </div>
-          <template v-else>
-            <!-- Message Envelope -->
-            <MessageEnvelope :message="message" v-if="showEnvelope" />
+        <div class="min-w-0 flex w-full flex-col" :class="isOutgoing ? 'items-end' : 'items-start'">
+          <!-- Keep email transport details outside the message bubble. -->
+          <MessageEnvelope :message="message" v-if="showEnvelope" />
 
-            <hr class="mb-2 border-muted-foreground/20" v-if="showEnvelope" />
-
-            <!-- Message Content -->
-            <div
-              ref="contentWrapperEl"
-              class="relative"
-              :class="{ 'max-h-[400px] overflow-hidden': isExpandable && !isExpanded }"
-            >
+          <div class="flex flex-col justify-end message-bubble" :class="bubbleClasses">
+            <div v-if="isDeleted" class="text-sm italic text-muted-foreground">
+              {{ message.content }}
+            </div>
+            <template v-else>
+              <!-- Message Content -->
               <div
-                v-if="message.content_type === 'text'"
-                class="mb-1 native-html whitespace-pre-wrap"
-                :class="{ 'mb-3': message.attachments.length > 0 }"
+                ref="contentWrapperEl"
+                class="relative"
+                :class="{ 'max-h-[400px] overflow-hidden': isExpandable && !isExpanded }"
               >
-                {{ sanitizedContent }}
-              </div>
-              <div
-                v-else
-                ref="messageContentEl"
-                @click="onMessageContentClick"
-                :class="{
-                  'email-light-canvas': !isOutgoing && convStore.current?.inbox_channel === 'email'
-                }"
-              >
-                <Letter
-                  :html="sanitizedContent"
-                  :allowedSchemas="allowedSchemas"
-                  :rewriteExternalLinks="rewriteMessageLink"
-                  :allowed-css-properties="extendedCssProperties"
-                  class="mb-1 native-html break-words"
+                <div
+                  v-if="message.content_type === 'text'"
+                  class="mb-1 native-html whitespace-pre-wrap"
                   :class="{ 'mb-3': message.attachments.length > 0 }"
+                >
+                  {{ sanitizedContent }}
+                </div>
+                <div
+                  v-else
+                  ref="messageContentEl"
+                  @click="onMessageContentClick"
+                  :class="{
+                    'email-light-canvas':
+                      !isOutgoing && convStore.current?.inbox_channel === 'email'
+                  }"
+                >
+                  <Letter
+                    :html="sanitizedContent"
+                    :allowedSchemas="allowedSchemas"
+                    :rewriteExternalLinks="rewriteMessageLink"
+                    :allowed-css-properties="extendedCssProperties"
+                    class="mb-1 native-html break-words"
+                    :class="{ 'mb-3': message.attachments.length > 0 }"
+                  />
+                </div>
+
+                <div
+                  v-if="isExpandable && !isExpanded"
+                  class="absolute left-0 right-0 bottom-0 h-24 flex items-end justify-center pointer-events-none"
+                  :class="
+                    message.private
+                      ? 'bg-gradient-to-t from-private via-private/90 to-transparent'
+                      : isOutgoing
+                        ? 'bg-gradient-to-t from-secondary via-secondary/90 to-transparent'
+                        : 'bg-gradient-to-t from-background via-background/90 to-transparent'
+                  "
+                >
+                  <button
+                    type="button"
+                    @click="isExpanded = true"
+                    class="pointer-events-auto flex items-center gap-1.5 text-xs font-medium text-foreground bg-accent hover:bg-accent/80 border border-border rounded-full px-3 py-1 mb-1 transition-colors duration-200"
+                  >
+                    <Maximize2 :size="12" />
+                    {{ t('globals.terms.expand') }}
+                  </button>
+                </div>
+              </div>
+
+              <ImageLightbox
+                v-model="inlineLightboxOpen"
+                :images="inlineImages"
+                :start-index="inlineLightboxIndex"
+              />
+
+              <!-- Quoted Text Toggle (incoming only) -->
+              <div
+                v-if="!isOutgoing && hasQuotedContent"
+                @click="toggleQuote"
+                class="text-xs cursor-pointer text-muted-foreground px-2 py-1 w-max hover:bg-muted hover:text-foreground rounded-md transition-colors duration-200"
+              >
+                {{
+                  showQuotedText
+                    ? t('conversation.hideQuotedText')
+                    : t('conversation.showQuotedText')
+                }}
+              </div>
+
+              <!-- Attachments -->
+              <BubbleAttachmentPreview :attachments="nonInlineAttachments" />
+
+              <!-- CSAT Response -->
+              <CSATResponseDisplay :message="message" />
+
+              <!-- Spinner for Pending Messages (outgoing only) -->
+              <Spinner v-if="isOutgoing && message.status === 'pending'" size="sm" />
+
+              <!-- Status Icons (outgoing only) -->
+              <div v-if="isOutgoing" class="flex items-center space-x-2 mt-2 self-end">
+                <Lock :size="12" v-if="isPrivateMessage" class="text-muted-foreground" />
+                <Tooltip v-if="isReadByContact">
+                  <TooltipTrigger>
+                    <CheckCheck :size="14" class="text-success" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{{ t('globals.terms.read') }}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip v-else-if="isDelivered">
+                  <TooltipTrigger>
+                    <Check :size="14" class="text-success" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{{ t('globals.terms.sent') }}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip v-if="message.meta?.continuity_emailed">
+                  <TooltipTrigger>
+                    <Mail :size="12" class="text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{{ t('conversation.sentViaEmail') }}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <RotateCcw
+                  size="12"
+                  @click="retryMessage(message)"
+                  class="cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-200"
+                  v-if="showRetry"
                 />
               </div>
-
-              <div
-                v-if="isExpandable && !isExpanded"
-                class="absolute left-0 right-0 bottom-0 h-24 flex items-end justify-center pointer-events-none"
-                :class="
-                  message.private
-                    ? 'bg-gradient-to-t from-private via-private/90 to-transparent'
-                    : isOutgoing
-                      ? 'bg-gradient-to-t from-secondary via-secondary/90 to-transparent'
-                      : 'bg-gradient-to-t from-background via-background/90 to-transparent'
-                "
-              >
-                <button
-                  type="button"
-                  @click="isExpanded = true"
-                  class="pointer-events-auto flex items-center gap-1.5 text-xs font-medium text-foreground bg-accent hover:bg-accent/80 border border-border rounded-full px-3 py-1 mb-1 transition-colors duration-200"
-                >
-                  <Maximize2 :size="12" />
-                  {{ t('globals.terms.expand') }}
-                </button>
-              </div>
-            </div>
-
-            <ImageLightbox
-              v-model="inlineLightboxOpen"
-              :images="inlineImages"
-              :start-index="inlineLightboxIndex"
-            />
-
-            <!-- Quoted Text Toggle (incoming only) -->
-            <div
-              v-if="!isOutgoing && hasQuotedContent"
-              @click="toggleQuote"
-              class="text-xs cursor-pointer text-muted-foreground px-2 py-1 w-max hover:bg-muted hover:text-foreground rounded-md transition-colors duration-200"
-            >
-              {{ showQuotedText ? t('conversation.hideQuotedText') : t('conversation.showQuotedText') }}
-            </div>
-
-            <!-- Attachments -->
-            <BubbleAttachmentPreview :attachments="nonInlineAttachments" />
-
-            <!-- CSAT Response -->
-            <CSATResponseDisplay :message="message" />
-
-            <!-- Spinner for Pending Messages (outgoing only) -->
-            <Spinner v-if="isOutgoing && message.status === 'pending'" size="sm" />
-
-            <!-- Status Icons (outgoing only) -->
-            <div v-if="isOutgoing" class="flex items-center space-x-2 mt-2 self-end">
-              <Lock :size="12" v-if="isPrivateMessage" class="text-muted-foreground" />
-              <Tooltip v-if="isReadByContact">
-                <TooltipTrigger>
-                  <CheckCheck :size="14" class="text-success" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{{ t('globals.terms.read') }}</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip v-else-if="isDelivered">
-                <TooltipTrigger>
-                  <Check :size="14" class="text-success" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{{ t('globals.terms.sent') }}</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip v-if="message.meta?.continuity_emailed">
-                <TooltipTrigger>
-                  <Mail :size="12" class="text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{{ t('conversation.sentViaEmail') }}</p>
-                </TooltipContent>
-              </Tooltip>
-              <RotateCcw
-                size="12"
-                @click="retryMessage(message)"
-                class="cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-200"
-                v-if="showRetry"
-              />
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
       </div>
 
       <!-- Avatar (right for outgoing) -->
       <template v-if="isOutgoing">
         <div v-if="groupWithPrev" class="w-8 flex-shrink-0" />
-        <router-link
-          v-else-if="canManageAI"
-          :to="aiAssistantRoute"
-          class="flex-shrink-0"
-        >
+        <router-link v-else-if="canManageAI" :to="aiAssistantRoute" class="flex-shrink-0">
           <Avatar class="cursor-pointer w-8 h-8 hover:opacity-80 transition-opacity">
             <AvatarImage :src="getAvatar" />
             <AvatarFallback class="font-medium">
@@ -268,7 +266,9 @@
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel>{{ t('globals.messages.cancel') }}</AlertDialogCancel>
-        <AlertDialogAction variant="destructive" @click="deleteNote">{{ t('globals.messages.delete') }}</AlertDialogAction>
+        <AlertDialogAction variant="destructive" @click="deleteNote">{{
+          t('globals.messages.delete')
+        }}</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
@@ -279,7 +279,16 @@ import { computed, ref, onMounted, nextTick } from 'vue'
 import { useConversationStore } from '@main/stores/conversation'
 import { useUserStore } from '@main/stores/user'
 import { useI18n } from 'vue-i18n'
-import { Lock, Mail, RotateCcw, Check, CheckCheck, Maximize2, Trash2, MoreHorizontal } from 'lucide-vue-next'
+import {
+  Lock,
+  Mail,
+  RotateCcw,
+  Check,
+  CheckCheck,
+  Maximize2,
+  Trash2,
+  MoreHorizontal
+} from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -413,6 +422,7 @@ const nonInlineAttachments = computed(() =>
 )
 
 const bubbleClasses = computed(() => ({
+  'email-message-bubble': showEnvelope.value,
   'bg-private': isOutgoing.value && props.message.private,
   'bg-secondary border border-border': isOutgoing.value && !props.message.private,
   'opacity-50 animate-pulse': isOutgoing.value && props.message.status === 'pending',
@@ -440,7 +450,12 @@ const isReadByContact = computed(() => {
   if (!isDelivered.value || !lastSeenAt || !isLiveChat) return false
   return new Date(props.message.created_at) <= new Date(lastSeenAt)
 })
-const showRetry = computed(() => isOutgoing.value && props.message.status === 'failed' && props.message.sender_id === userStore.userID)
+const showRetry = computed(
+  () =>
+    isOutgoing.value &&
+    props.message.status === 'failed' &&
+    props.message.sender_id === userStore.userID
+)
 
 const retryMessage = (msg) => {
   api.retryMessage(convStore.current.uuid, msg.uuid)

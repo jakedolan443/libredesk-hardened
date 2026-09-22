@@ -1,11 +1,12 @@
 <template>
   <div class="flex flex-col relative h-full">
-    <div ref="threadEl" class="flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]" @scroll="handleScroll">
+    <div
+      ref="threadEl"
+      class="flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]"
+      @scroll="handleScroll"
+    >
       <div ref="contentEl" class="min-h-full px-4 pb-10 relative">
-        <div
-          v-if="showLoadMore"
-          class="text-center mt-3"
-        >
+        <div v-if="showLoadMore" class="text-center mt-3">
           <Button
             size="sm"
             variant="outline"
@@ -25,18 +26,19 @@
 
         <MessagesSkeleton :count="10" v-if="conversationStore.messages.loading" />
 
-        <TransitionGroup v-else enter-active-class="animate-slide-in" leave-active-class="message-leaving" tag="div">
+        <TransitionGroup
+          v-else
+          enter-active-class="animate-slide-in"
+          leave-active-class="message-leaving"
+          tag="div"
+        >
           <div
             v-for="row in messageRows"
             :key="row.message.uuid"
             :data-message-uuid="row.message.uuid"
             :class="[row.spacingClass, { 'my-2': row.message.type === 'activity' }]"
           >
-            <DaySeparator
-              v-if="row.showDaySeparator"
-              :date="row.message.created_at"
-              class="mb-4"
-            />
+            <DaySeparator v-if="row.showDaySeparator" :date="row.message.created_at" class="mb-4" />
             <div v-if="!row.message.private && row.message.type !== 'activity'">
               <MessageBubble
                 :message="row.message"
@@ -116,6 +118,7 @@ const contentEl = ref(null)
 const emitter = useEmitter()
 const unReadMessages = ref(0)
 const showAssignNudge = ref(false)
+const unreadCountAtOpen = ref(0)
 const { canAssignAgent } = useBulkActionPermissions()
 let currentConversationUUID = ''
 let openScrollDone = false
@@ -124,9 +127,15 @@ const assignToSelf = () => {
   conversationStore.updateAssignee('user', { assignee_id: userStore.userID })
 }
 
-const { hasUserScrolled, scrollToBottom, scrollToOffset, handleScroll } = useStickyScroll(threadEl, contentEl, {
-  onArriveBottom: () => { unReadMessages.value = 0 }
-})
+const { hasUserScrolled, scrollToBottom, scrollToOffset, handleScroll } = useStickyScroll(
+  threadEl,
+  contentEl,
+  {
+    onArriveBottom: () => {
+      unReadMessages.value = 0
+    }
+  }
+)
 
 const handleScrollToBottom = () => {
   hasUserScrolled.value = false
@@ -137,7 +146,13 @@ const applyOpenScroll = () => {
   const thread = threadEl.value
   if (!thread) return
   const targetUUID = route.query.scrollTo
-  const targetEl = targetUUID ? thread.querySelector(`[data-message-uuid="${targetUUID}"]`) : null
+  const messages = conversationStore.conversationMessages
+  const unreadStartIndex = Math.max(messages.length - unreadCountAtOpen.value, 0)
+  const unreadTargetUUID = unreadCountAtOpen.value ? messages[unreadStartIndex]?.uuid : null
+  const initialTargetUUID = targetUUID || unreadTargetUUID
+  const targetEl = initialTargetUUID
+    ? thread.querySelector(`[data-message-uuid="${initialTargetUUID}"]`)
+    : null
   if (targetEl) {
     hasUserScrolled.value = true
     // Messages above the target collapse to max-h after mount, so re-pin until offsetTop stops moving.
@@ -150,14 +165,17 @@ const applyOpenScroll = () => {
       scrollToOffset(Math.max(0, offset - threadEl.value.clientHeight * MENTION_TOP_OFFSET_RATIO))
       stableFrames = offset === lastOffset ? stableFrames + 1 : 0
       lastOffset = offset
-      if (stableFrames < MENTION_SETTLE_FRAMES && ++frames < MENTION_MAX_ANCHOR_FRAMES) requestAnimationFrame(anchorToTarget)
+      if (stableFrames < MENTION_SETTLE_FRAMES && ++frames < MENTION_MAX_ANCHOR_FRAMES)
+        requestAnimationFrame(anchorToTarget)
     }
     anchorToTarget()
     targetEl.classList.add('highlight-mention')
     setTimeout(() => targetEl.classList.remove('highlight-mention'), HIGHLIGHT_MS)
   } else {
-    hasUserScrolled.value = false
-    scrollToBottom()
+    // Treat the top position as intentional so the resize observer does not
+    // immediately move the thread back to the bottom while the UI settles.
+    hasUserScrolled.value = true
+    scrollToOffset(0)
   }
 }
 
@@ -192,6 +210,9 @@ watch(
   (newUUID) => {
     if (!newUUID || newUUID === currentConversationUUID) return
     currentConversationUUID = newUUID
+    unreadCountAtOpen.value =
+      conversationStore.conversationsList.find((conversation) => conversation.uuid === newUUID)
+        ?.unread_message_count || 0
     unReadMessages.value = 0
     openScrollDone = false
     showAssignNudge.value = false
