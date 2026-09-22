@@ -1,8 +1,17 @@
 <template>
-  <div class="flex flex-col text-left" :class="isOutgoing ? 'items-end' : 'items-start'">
+  <div
+    class="flex flex-col text-left"
+    :class="
+      isEmailMessage
+        ? 'w-full items-stretch email-thread-message'
+        : isOutgoing
+          ? 'items-end'
+          : 'items-start'
+    "
+  >
     <!-- Sender Name -->
     <div
-      v-if="!groupWithPrev"
+      v-if="!groupWithPrev && !isEmailMessage"
       class="mb-1 flex items-center gap-1"
       :class="isOutgoing ? 'pr-2 md:pr-[47px]' : 'pl-10 md:pl-[47px]'"
     >
@@ -33,9 +42,12 @@
     </div>
 
     <!-- Message Bubble -->
-    <div class="flex flex-row gap-2 w-full group" :class="{ 'justify-end': isOutgoing }">
+    <div
+      class="flex w-full flex-row gap-2 group"
+      :class="{ 'justify-end': isOutgoing && !isEmailMessage }"
+    >
       <!-- Avatar (left for incoming) -->
-      <template v-if="!isOutgoing">
+      <template v-if="!isOutgoing && !isEmailMessage">
         <router-link
           v-if="!groupWithPrev"
           :to="{ name: 'contact-detail', params: { id: message.author?.id } }"
@@ -52,8 +64,11 @@
       </template>
 
       <div
-        class="w-full md:w-4/5"
-        :class="{ 'flex justify-end items-center gap-2': isOutgoing }"
+        class="min-w-0"
+        :class="[
+          isEmailMessage ? 'w-full' : 'w-full md:w-4/5',
+          { 'flex justify-end items-center gap-2': isOutgoing && !isEmailMessage }
+        ]"
         style="contain: inline-size"
       >
         <!-- Delete note menu (private notes, appears on hover, left of bubble) -->
@@ -79,9 +94,27 @@
           </DropdownMenu>
         </div>
 
-        <div class="min-w-0 flex w-full flex-col" :class="isOutgoing ? 'items-end' : 'items-start'">
-          <!-- Keep email transport details outside the message bubble. -->
-          <MessageEnvelope :message="message" v-if="showEnvelope" />
+        <div
+          class="min-w-0 flex w-full flex-col"
+          :class="isEmailMessage ? 'email-message-card' : isOutgoing ? 'items-end' : 'items-start'"
+        >
+          <!-- Conventional email header: transport details and date sit above the body. -->
+          <div v-if="isEmailMessage" class="email-message-header">
+            <MessageEnvelope v-if="showEnvelope" :message="message" class="mb-0 min-w-0 flex-1" />
+            <Tooltip>
+              <TooltipTrigger>
+                <time class="email-message-date" :datetime="message.created_at">
+                  {{ formatMessageTimestamp(message.created_at) }}
+                </time>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{{ formatFullTimestamp(message.created_at) }}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+
+          <!-- Keep email transport details outside the bubble for other message types. -->
+          <MessageEnvelope v-else-if="showEnvelope" :message="message" />
 
           <div class="flex flex-col justify-end message-bubble" :class="bubbleClasses">
             <div v-if="isDeleted" class="text-sm italic text-muted-foreground">
@@ -208,7 +241,7 @@
       </div>
 
       <!-- Avatar (right for outgoing) -->
-      <template v-if="isOutgoing">
+      <template v-if="isOutgoing && !isEmailMessage">
         <div v-if="groupWithPrev" class="w-8 flex-shrink-0" />
         <router-link v-else-if="canManageAI" :to="aiAssistantRoute" class="flex-shrink-0">
           <Avatar class="cursor-pointer w-8 h-8 hover:opacity-80 transition-opacity">
@@ -240,7 +273,7 @@
     </div>
 
     <!-- Timestamp tooltip -->
-    <div v-if="!groupWithNext" :class="isOutgoing ? 'pr-[47px]' : 'pl-[47px]'">
+    <div v-if="!groupWithNext && !isEmailMessage" :class="isOutgoing ? 'pr-[47px]' : 'pl-[47px]'">
       <Tooltip>
         <TooltipTrigger>
           <span class="text-muted-foreground text-xs mt-1">
@@ -392,6 +425,10 @@ const avatarFallback = computed(() => {
   return firstName.toUpperCase().substring(0, 2)
 })
 
+const isEmailMessage = computed(
+  () => convStore.current?.inbox_channel === 'email' && !props.message.private
+)
+
 const messageText = computed(() => {
   if (props.message.meta?.is_csat) {
     return t('globals.messages.pleaseRateConversation')
@@ -404,7 +441,7 @@ const nonInlineAttachments = computed(() =>
 )
 
 const bubbleClasses = computed(() => ({
-  'email-message-bubble': showEnvelope.value,
+  'email-message-bubble': isEmailMessage.value,
   '!w-full': props.message.content_type !== 'text' && typeof props.message.display?.html === 'string',
   'bg-private': isOutgoing.value && props.message.private,
   'bg-secondary border border-border': isOutgoing.value && !props.message.private,

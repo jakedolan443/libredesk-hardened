@@ -113,6 +113,7 @@ const route = useRoute()
 
 const conversationStore = useConversationStore()
 const userStore = useUserStore()
+const isEmailConversation = computed(() => conversationStore.current?.inbox_channel === 'email')
 const threadEl = ref(null)
 const contentEl = ref(null)
 const emitter = useEmitter()
@@ -263,7 +264,10 @@ const canGroup = (a, b) => {
   return aBucket === bBucket
 }
 
-const getSpacingClass = (index, groupWithPrev) => {
+const getSpacingClass = (index, groupWithPrev, message) => {
+  if (isEmailConversation.value && !message.private && message.type !== 'activity') {
+    return index === 0 ? 'pt-0' : 'mt-0'
+  }
   if (index === 0) return 'pt-4'
   return groupWithPrev ? 'mt-1' : 'mt-4'
 }
@@ -291,7 +295,7 @@ const messageRows = computed(() => {
       message,
       groupWithPrev,
       groupWithNext,
-      spacingClass: getSpacingClass(index, groupWithPrev),
+      spacingClass: getSpacingClass(index, groupWithPrev, message),
       showDaySeparator:
         index === 0 ||
         !isSameDay(new Date(messages[index - 1].created_at), new Date(message.created_at))
