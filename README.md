@@ -63,22 +63,14 @@ And more — checkout [libredesk.io](https://libredesk.io) or try the [live demo
 
 ## Installation
 
-### Railway (1-click deploy)
-
-The fastest way to get a libredesk instance running. Railway provisions the app, Postgres, and Redis for you.
-
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/libredesk?referralCode=4gdm5b&utm_medium=integration&utm_source=template&utm_campaign=generic)
-
-__________________
-
 ### Docker
 
-The latest image is available on DockerHub at [`libredesk/libredesk:latest`](https://hub.docker.com/r/libredesk/libredesk/tags?page=1&ordering=last_updated&name=latest)
+The latest image is available in GitHub Container Registry at [`ghcr.io/jakedolan443/libredesk-hardened:latest`](https://github.com/jakedolan443/libredesk-hardened/pkgs/container/libredesk-hardened).
 
 ```shell
 # Download the compose file and sample config file in the current directory.
-curl -LO https://github.com/abhinavxd/libredesk/raw/main/docker-compose.yml
-curl -LO https://github.com/abhinavxd/libredesk/raw/main/config.sample.toml
+curl -LO https://github.com/jakedolan443/libredesk-hardened/raw/main/docker-compose.yml
+curl -LO https://github.com/jakedolan443/libredesk-hardened/raw/main/config.sample.toml
 
 # Copy the config.sample.toml to config.toml and edit it as needed.
 cp config.sample.toml config.toml
@@ -97,7 +89,7 @@ See [installation docs](https://docs.libredesk.io/getting-started/installation)
 __________________
 
 ### Binary
-- Download the [latest release](https://github.com/abhinavxd/libredesk/releases) and extract the libredesk binary.
+- Download the [latest release](https://github.com/jakedolan443/libredesk-hardened/releases) and extract the libredesk binary.
 - Edit config.toml as needed.
 - `./libredesk --install` to setup the Postgres DB.
 - Run `./libredesk --set-system-user-password` to set the password for the System user.
@@ -108,13 +100,6 @@ __________________
 
 ## Developers
 
-- If you are interested in contributing, **please read [CONTRIBUTING.md](./CONTRIBUTING.md) first**.
-- For local development and setup, refer to the [developer setup](https://docs.libredesk.io/contributing/developer-setup).
-- For planned features and project direction, see [ROADMAP.md](./ROADMAP.md).
+For local development and setup, refer to the [developer setup](https://docs.libredesk.io/contributing/developer-setup).
 
 The backend is written in Go and the frontend is Vue.js 3 with Shadcn UI.
-
-
-
-## Translators
-You can help translate libredesk into your language on [Crowdin](https://crowdin.com/project/libredesk).  

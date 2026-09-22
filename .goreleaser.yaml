@@ -1,8 +1,8 @@
 env:
   - GO111MODULE=on
   - CGO_ENABLED=0
-  - GITHUB_ORG=abhinavxd
-  - DOCKER_ORG=libredesk
+  - GITHUB_ORG=jakedolan443
+  - IMAGE_NAME=libredesk-hardened
 
 before:
   hooks:
@@ -57,16 +57,14 @@ dockers:
     ids:
       - universal
     image_templates:
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-amd64"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-amd64"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-amd64"
     build_flag_templates:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
-      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
+      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
@@ -81,16 +79,14 @@ dockers:
     ids:
       - universal
     image_templates:
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-arm64"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-arm64"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-arm64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-arm64"
     build_flag_templates:
       - --platform=linux/arm64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
-      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
+      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
@@ -106,16 +102,14 @@ dockers:
     ids:
       - universal
     image_templates:
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-armv6"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv6"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-armv6"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv6"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-armv6"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-armv6"
     build_flag_templates:
       - --platform=linux/arm/v6
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
-      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
+      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
@@ -131,16 +125,14 @@ dockers:
     ids:
       - universal
     image_templates:
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-armv7"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv7"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-armv7"
-      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv7"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-armv7"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-armv7"
     build_flag_templates:
       - --platform=linux/arm/v7
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
-      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
+      - --label=org.opencontainers.image.source=https://github.com/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
@@ -150,34 +142,34 @@ dockers:
       - config.sample.toml
 
 docker_manifests:
-  - name_template: "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest"
+  - name_template: "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest"
     image_templates:
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-amd64"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-arm64"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-armv6"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:latest-armv7"
-  - name_template: "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-arm64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-armv6"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-armv7"
+  - name_template: "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}"
     image_templates:
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-amd64"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-arm64"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv6"
-      - "{{ .Env.DOCKER_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv7"
-  - name_template: ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-arm64"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-armv6"
+      - "ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-armv7"
+  - name_template: ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest
     image_templates:
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-amd64
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-arm64
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-armv6
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:latest-armv7
-  - name_template: ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-amd64
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-arm64
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-armv6
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:latest-armv7
+  - name_template: ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}
     image_templates:
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-amd64
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-arm64
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv6
-      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .ProjectName }}:{{ .Tag }}-armv7
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-armv6
+      - ghcr.io/{{ .Env.GITHUB_ORG }}/{{ .Env.IMAGE_NAME }}:{{ .Tag }}-armv7
 
 release:
   github:
-    owner: abhinavxd
-    name: libredesk
+    owner: jakedolan443
+    name: libredesk-hardened
   prerelease: auto
   draft: true
