@@ -66,7 +66,6 @@ func handleGetMessages(r *fastglue.Request) error {
 	}
 
 	// Process CSAT status for all messages (will only affect CSAT messages)
-	app.conversation.ProcessCSATStatus(messages)
 
 	// Strip CSAT UUID from agent sessions to prevent self-rating.
 	if r.RequestCtx.UserValue("auth_method") != authMethodAPIKey {
@@ -123,7 +122,6 @@ func handleGetMessage(r *fastglue.Request) error {
 
 	// Process CSAT status for the message (will only affect CSAT messages)
 	messages := []cmodels.Message{message}
-	app.conversation.ProcessCSATStatus(messages)
 	message = messages[0]
 
 	// Strip CSAT UUID from agent sessions to prevent self-rating.
@@ -273,7 +271,6 @@ func handleSendMessage(r *fastglue.Request) error {
 	if err != nil {
 		return sendErrorEnvelope(r, err)
 	}
-	markAssignmentNotificationRead(app, conv, user)
 	prepareMessageDisplay(app, &message, rootURL, loadResourcePolicy(app), user.ID)
 	return r.SendEnvelope(message)
 }

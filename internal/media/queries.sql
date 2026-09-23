@@ -23,11 +23,6 @@ WHERE
    OR
    ($2 != '' AND uuid = NULLIF($2, '')::uuid)
 
--- name: get-media-by-uuid
-SELECT id, created_at, updated_at, "uuid", store, filename, content_type, content_id, model_id, model_type, disposition, "size", meta, private
-FROM media
-WHERE uuid = $1;
-
 -- name: delete-media
 DELETE FROM media
 WHERE uuid = $1;
@@ -58,28 +53,6 @@ WHERE (model_type = 'messages' OR model_type IS NULL)
     ((model_id IS NULL OR model_id = 0) AND created_at < NOW() - INTERVAL '7 days')
     OR (model_id > 0 AND created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS (SELECT 1 FROM conversation_messages cm WHERE cm.id = media.model_id))
   );
-
--- name: get-unlinked-help-article-media
-SELECT id, created_at, updated_at, "uuid", store, filename, content_type, content_id, model_id, model_type, disposition, "size", meta, private
-FROM media
-WHERE model_type = 'help_articles'
-  AND (model_id IS NULL OR model_id = 0 OR NOT EXISTS (SELECT 1 FROM help_articles ha WHERE ha.id = media.model_id))
-  AND NOT EXISTS (SELECT 1 FROM help_articles ha WHERE POSITION(media.uuid::TEXT IN ha.content) > 0)
-  AND updated_at < NOW() - INTERVAL '7 days';
-
--- name: link-help-article-media
-UPDATE media
-SET model_id = $1, updated_at = NOW()
-WHERE model_type = 'help_articles'
-  AND uuid = ANY($2::uuid[])
-  AND (model_id IS NULL OR model_id = 0 OR model_id = $1);
-
--- name: unlink-help-article-media
-UPDATE media
-SET model_id = NULL, updated_at = NOW()
-WHERE model_type = 'help_articles'
-  AND model_id = $1
-  AND NOT (uuid = ANY($2::uuid[]));
 
 -- name: content-id-exists
 SELECT m.uuid

@@ -101,12 +101,7 @@ describe('API: templates', () => {
     })
   })
 
-  it('does not list the template under another type', () => {
-    cy.api('GET', '/api/v1/templates?type=email_notification').then(({ body }) => {
-      const rows = body.data.results || body.data
-      expect(rows.some((t) => t.id === templateId)).to.be.false
-    })
-  })
+
 
   it('updates the template', () => {
     cy.api('PUT', `/api/v1/templates/${templateId}`, {
@@ -133,18 +128,7 @@ describe('API: templates', () => {
     })
   })
 
-  it('refuses to delete a built in template', () => {
-    cy.api('GET', '/api/v1/templates?type=email_notification').then(({ body }) => {
-      const rows = body.data.results || body.data
-      const builtIn = rows.find((t) => t.is_builtin)
-      expect(builtIn, 'a built in template exists').to.not.be.undefined
-      cy.api('DELETE', `/api/v1/templates/${builtIn.id}`, {}, { failOnStatusCode: false })
-        .then((res) => {
-          expect(res.status).to.eq(403)
-          expect(res.body.error_type).to.eq('PermissionException')
-        })
-    })
-  })
+
 
   it('404s on a template that does not exist', () => {
     cy.api('GET', '/api/v1/templates/99999999', null, { failOnStatusCode: false })
@@ -194,4 +178,8 @@ describe('API: templates', () => {
       .its('status')
       .should('eq', 404)
   })
+})
+
+it('rejects retired notification template requests', () => {
+  cy.api('GET', '/api/v1/templates?type=email_notification', null, { failOnStatusCode: false }).its('status').should('eq', 400)
 })

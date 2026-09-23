@@ -5,7 +5,7 @@
       class="flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]"
       @scroll="handleScroll"
     >
-      <div ref="contentEl" class="min-h-full px-4 pb-10 relative">
+      <div ref="contentEl" class="min-h-full px-4 pt-4 pb-10 relative">
         <div v-if="showLoadMore" class="text-center mt-3">
           <Button
             size="sm"
@@ -74,13 +74,6 @@
       :unread-count="unReadMessages"
       @scroll-to-bottom="handleScrollToBottom"
     />
-
-    <!-- Nudge to self-assign after replying to an unassigned conversation -->
-    <AssignSelfNudge
-      :show="showAssignNudge"
-      @assign="assignToSelf"
-      @dismiss="showAssignNudge = false"
-    />
   </div>
 </template>
 
@@ -96,10 +89,9 @@ import { RefreshCw, Loader2 } from 'lucide-vue-next'
 import ScrollToBottomButton from '@shared-ui/components/ScrollToBottomButton'
 import DaySeparator from '@shared-ui/components/DaySeparator'
 import { isSameDay } from 'date-fns'
-import AssignSelfNudge from './AssignSelfNudge.vue'
+
 import { useEmitter } from '@main/composables/useEmitter'
 import { EMITTER_EVENTS } from '@main/constants/emitterEvents'
-import { useBulkActionPermissions } from '@main/composables/useBulkActionPermissions'
 import MessagesSkeleton from './MessagesSkeleton.vue'
 import { TypingIndicator } from '@shared-ui/components/TypingIndicator'
 import { useStickyScroll } from '@shared-ui/composables'
@@ -118,15 +110,11 @@ const threadEl = ref(null)
 const contentEl = ref(null)
 const emitter = useEmitter()
 const unReadMessages = ref(0)
-const showAssignNudge = ref(false)
+
 const unreadCountAtOpen = ref(0)
-const { canAssignAgent } = useBulkActionPermissions()
+
 let currentConversationUUID = ''
 let openScrollDone = false
-
-const assignToSelf = () => {
-  conversationStore.updateAssignee('user', { assignee_id: userStore.userID })
-}
 
 const { hasUserScrolled, scrollToBottom, scrollToOffset, handleScroll } = useStickyScroll(
   threadEl,
@@ -185,14 +173,6 @@ const newMessageHandler = (data) => {
   const message = data.message
   if (message?.sender_id === userStore.userID) {
     hasUserScrolled.value = false
-    if (
-      message.type === 'outgoing' &&
-      !message.private &&
-      !conversationStore.current.assigned_user_id &&
-      canAssignAgent.value
-    ) {
-      showAssignNudge.value = true
-    }
     return
   }
   if (hasUserScrolled.value) unReadMessages.value++
@@ -216,14 +196,6 @@ watch(
         ?.unread_message_count || 0
     unReadMessages.value = 0
     openScrollDone = false
-    showAssignNudge.value = false
-  }
-)
-
-watch(
-  () => conversationStore.current?.assigned_user_id,
-  (assignedUserId) => {
-    if (assignedUserId) showAssignNudge.value = false
   }
 )
 

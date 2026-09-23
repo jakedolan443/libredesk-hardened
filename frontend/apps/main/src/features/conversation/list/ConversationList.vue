@@ -62,12 +62,6 @@
           <DropdownMenuItem @click="handleSortChange('waiting_longest')">
             {{ $t('conversation.sort.waitingLongest') }}
           </DropdownMenuItem>
-          <DropdownMenuItem @click="handleSortChange('next_sla_target')">
-            {{ $t('conversation.sort.nextSLATarget') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem @click="handleSortChange('priority_first')">
-            {{ $t('conversation.sort.priorityFirst') }}
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -133,8 +127,15 @@
           :disabled="conversationStore.conversations.fetching"
           class="max-md:h-11 transition-all duration-200 ease-in-out transform hover:scale-105"
         >
-          <Loader2 v-if="conversationStore.conversations.fetching" class="mr-2 h-4 w-4 animate-spin" />
-          {{ conversationStore.conversations.fetching ? t('globals.terms.loading') : t('globals.terms.loadMore') }}
+          <Loader2
+            v-if="conversationStore.conversations.fetching"
+            class="mr-2 h-4 w-4 animate-spin"
+          />
+          {{
+            conversationStore.conversations.fetching
+              ? t('globals.terms.loading')
+              : t('globals.terms.loadMore')
+          }}
         </Button>
         <p
           class="text-sm text-muted-foreground"

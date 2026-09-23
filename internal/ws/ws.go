@@ -33,7 +33,6 @@ type userStore interface {
 }
 
 type conversationStore interface {
-	BroadcastTypingToWidgetClientsOnly(conversationUUID string, isTyping bool)
 	FilterAuthorizedListUUIDs(agentID int, uuids []string) ([]string, error)
 }
 
@@ -230,7 +229,6 @@ func (h *Hub) BroadcastMessage(msg models.BroadcastMessage) {
 
 func (h *Hub) BroadcastTypingToConversation(conversationUUID string, typingMsg models.TypingMessage) {
 	if h.conversationStore != nil && !typingMsg.IsPrivateMessage {
-		h.conversationStore.BroadcastTypingToWidgetClientsOnly(conversationUUID, typingMsg.IsTyping)
 	}
 }
 

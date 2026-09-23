@@ -9,7 +9,6 @@ import (
 	"time"
 
 	amodels "github.com/abhinavxd/libredesk/internal/auth/models"
-	"github.com/abhinavxd/libredesk/internal/automation/models"
 	"github.com/abhinavxd/libredesk/internal/conversation"
 	cmodels "github.com/abhinavxd/libredesk/internal/conversation/models"
 	"github.com/abhinavxd/libredesk/internal/envelope"
@@ -39,26 +38,16 @@ type statusUpdateReq struct {
 	SnoozedUntil string `json:"snoozed_until,omitempty"`
 }
 
-type tagsUpdateReq struct {
-	Tags   []string `json:"tags"`
-	Action string   `json:"action,omitempty"`
-}
-
 type createConversationRequest struct {
-	InboxID          int            `json:"inbox_id"`
-	AssignedAgentID  int            `json:"agent_id"`
-	AssignedTeamID   int            `json:"team_id"`
-	Email            string         `json:"contact_email"`
-	FirstName        string         `json:"first_name"`
-	LastName         string         `json:"last_name"`
-	ExternalUserID   string         `json:"external_user_id"`
-	ReuseContact     bool           `json:"reuse_contact"`
-	Subject          string         `json:"subject"`
-	Content          string         `json:"content"`
-	Attachments      []int          `json:"attachments"`
-	Initiator        string         `json:"initiator"` // "contact" | "agent"
-	SourceID         string         `json:"source_id"` // RFC 5322 Message-ID of the inbound message; stored on the created contact message so replies thread on it. Contact-initiated only.
-	CustomAttributes map[string]any `json:"custom_attributes"`
+	InboxID     int    `json:"inbox_id"`
+	Email       string `json:"email"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	Subject     string `json:"subject"`
+	Content     string `json:"content"`
+	Attachments []int  `json:"attachments"`
+	Initiator   string `json:"initiator"` // "contact" | "agent"
+	SourceID    string `json:"source_id"` // RFC 5322 Message-ID of the inbound message; stored on the created contact message so replies thread on it. Contact-initiated only.
 }
 
 // handleGetAllConversations retrieves all conversations.
@@ -78,63 +67,6 @@ func handleGetAllConversations(r *fastglue.Request) error {
 		return sendErrorEnvelope(r, err)
 	}
 
-	if len(conversations) > 0 {
-		total = conversations[0].Total
-	}
-
-	return r.SendEnvelope(envelope.PageResults{
-		Results:    conversations,
-		Total:      total,
-		PerPage:    pageSize,
-		TotalPages: (total + pageSize - 1) / pageSize,
-		Page:       page,
-	})
-}
-
-// handleGetAssignedConversations retrieves conversations assigned to the current user.
-func handleGetAssignedConversations(r *fastglue.Request) error {
-	var (
-		app     = r.Context.(*App)
-		user    = r.RequestCtx.UserValue("user").(amodels.User)
-		order   = string(r.RequestCtx.QueryArgs().Peek("order"))
-		orderBy = string(r.RequestCtx.QueryArgs().Peek("order_by"))
-		filters = string(r.RequestCtx.QueryArgs().Peek("filters"))
-		total   = 0
-	)
-	page, pageSize := getPagination(r)
-	conversations, err := app.conversation.GetAssignedConversationsList(user.ID, user.ID, order, orderBy, filters, page, pageSize)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	if len(conversations) > 0 {
-		total = conversations[0].Total
-	}
-
-	return r.SendEnvelope(envelope.PageResults{
-		Results:    conversations,
-		Total:      total,
-		PerPage:    pageSize,
-		TotalPages: (total + pageSize - 1) / pageSize,
-		Page:       page,
-	})
-}
-
-// handleGetUnassignedConversations retrieves unassigned conversations.
-func handleGetUnassignedConversations(r *fastglue.Request) error {
-	var (
-		app     = r.Context.(*App)
-		user    = r.RequestCtx.UserValue("user").(amodels.User)
-		order   = string(r.RequestCtx.QueryArgs().Peek("order"))
-		orderBy = string(r.RequestCtx.QueryArgs().Peek("order_by"))
-		filters = string(r.RequestCtx.QueryArgs().Peek("filters"))
-		total   = 0
-	)
-	page, pageSize := getPagination(r)
-
-	conversations, err := app.conversation.GetUnassignedConversationsList(user.ID, order, orderBy, filters, page, pageSize)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
 	if len(conversations) > 0 {
 		total = conversations[0].Total
 	}
@@ -297,50 +229,6 @@ func handleGetViewCount(r *fastglue.Request) error {
 	return r.SendEnvelope(map[string]int{"count": count})
 }
 
-// handleGetTeamUnassignedConversations returns conversations assigned to a team but not to any user.
-func handleGetTeamUnassignedConversations(r *fastglue.Request) error {
-	var (
-		app       = r.Context.(*App)
-		auser     = r.RequestCtx.UserValue("user").(amodels.User)
-		teamIDStr = r.RequestCtx.UserValue("id").(string)
-		order     = string(r.RequestCtx.QueryArgs().Peek("order"))
-		orderBy   = string(r.RequestCtx.QueryArgs().Peek("order_by"))
-		filters   = string(r.RequestCtx.QueryArgs().Peek("filters"))
-		total     = 0
-	)
-	page, pageSize := getPagination(r)
-	teamID, _ := strconv.Atoi(teamIDStr)
-	if teamID < 1 {
-		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.T("globals.messages.somethingWentWrong"), nil, envelope.InputError)
-	}
-
-	// Check if user belongs to the team.
-	exists, err := app.team.UserBelongsToTeam(teamID, auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	if !exists {
-		return sendErrorEnvelope(r, envelope.NewError(envelope.PermissionError, app.i18n.T("conversation.notMemberOfTeam"), nil))
-	}
-
-	conversations, err := app.conversation.GetTeamUnassignedConversationsList(auser.ID, teamID, order, orderBy, filters, page, pageSize)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	if len(conversations) > 0 {
-		total = conversations[0].Total
-	}
-
-	return r.SendEnvelope(envelope.PageResults{
-		Results:    conversations,
-		Total:      total,
-		PerPage:    pageSize,
-		TotalPages: (total + pageSize - 1) / pageSize,
-		Page:       page,
-	})
-}
-
 // handleGetConversation retrieves a single conversation by it's UUID.
 func handleGetConversation(r *fastglue.Request) error {
 	var (
@@ -359,8 +247,6 @@ func handleGetConversation(r *fastglue.Request) error {
 		return sendErrorEnvelope(r, err)
 	}
 
-	prev, _ := app.conversation.GetContactPreviousConversations(conv.ContactID, 10)
-	conv.PreviousConversations = filterCurrentPreviousConv(prev, conv.UUID)
 	return r.SendEnvelope(conv)
 }
 
@@ -396,28 +282,6 @@ func handleDownloadConversationTranscript(r *fastglue.Request) error {
 	r.RequestCtx.SetContentType("text/plain; charset=utf-8")
 	r.RequestCtx.SetBody(transcript)
 	return nil
-}
-
-// handleGetContactPageVisits returns the recent page visits for the contact of a conversation.
-func handleGetContactPageVisits(r *fastglue.Request) error {
-	var (
-		app   = r.Context.(*App)
-		uuid  = r.RequestCtx.UserValue("uuid").(string)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-	)
-
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	conv, err := enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	pages := getPageVisitsFromRedis(app, conv.ContactID)
-	return r.SendEnvelope(pages)
 }
 
 // handleUpdateConversationAssigneeLastSeen updates the current user's last seen timestamp for a conversation.
@@ -486,118 +350,6 @@ func handleGetConversationParticipants(r *fastglue.Request) error {
 	return r.SendEnvelope(p)
 }
 
-// handleUpdateUserAssignee updates the user assigned to a conversation.
-func handleUpdateUserAssignee(r *fastglue.Request) error {
-	var (
-		app   = r.Context.(*App)
-		uuid  = r.RequestCtx.UserValue("uuid").(string)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-		req   = assigneeChangeReq{}
-	)
-
-	if err := r.Decode(&req, "json"); err != nil {
-		app.lo.Error("error decoding assignee change request", "error", err)
-		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.T("errors.parsingRequest"), nil, envelope.InputError)
-	}
-
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	conversation, err := enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	// Already assigned?
-	if conversation.AssignedUserID.Int == req.AssigneeID {
-		return r.SendEnvelope(true)
-	}
-
-	if err := app.conversation.UpdateConversationUserAssignee(uuid, req.AssigneeID, user); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	return r.SendEnvelope(true)
-}
-
-// handleUpdateTeamAssignee updates the team assigned to a conversation.
-func handleUpdateTeamAssignee(r *fastglue.Request) error {
-	var (
-		app   = r.Context.(*App)
-		uuid  = r.RequestCtx.UserValue("uuid").(string)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-		req   = teamAssigneeChangeReq{}
-	)
-
-	if err := r.Decode(&req, "json"); err != nil {
-		app.lo.Error("error decoding team assignee change request", "error", err)
-		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.T("errors.parsingRequest"), nil, envelope.InputError)
-	}
-
-	assigneeID := req.AssigneeID
-
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	_, err = app.team.Get(assigneeID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	conversation, err := enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	// Already assigned?
-	if conversation.AssignedTeamID.Int == assigneeID {
-		return r.SendEnvelope(true)
-	}
-	if err := app.conversation.UpdateConversationTeamAssignee(uuid, assigneeID, user); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	return r.SendEnvelope(true)
-}
-
-// handleUpdateConversationPriority updates the priority of a conversation.
-func handleUpdateConversationPriority(r *fastglue.Request) error {
-	var (
-		app   = r.Context.(*App)
-		uuid  = r.RequestCtx.UserValue("uuid").(string)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-		req   = priorityUpdateReq{}
-	)
-
-	if err := r.Decode(&req, "json"); err != nil {
-		app.lo.Error("error decoding priority update request", "error", err)
-		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.T("errors.parsingRequest"), nil, envelope.InputError)
-	}
-
-	priority := req.Priority
-	if priority == "" {
-		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.Ts("globals.messages.empty", "name", "`priority`"), nil, envelope.InputError)
-	}
-
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	_, err = enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	if err := app.conversation.UpdateConversationPriority(uuid, 0 /**priority_id**/, priority, user); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	return r.SendEnvelope(true)
-}
-
 // handleUpdateConversationStatus updates the status of a conversation.
 func handleUpdateConversationStatus(r *fastglue.Request) error {
 	var (
@@ -634,7 +386,7 @@ func handleUpdateConversationStatus(r *fastglue.Request) error {
 	if err != nil {
 		return sendErrorEnvelope(r, err)
 	}
-	conversation, err := enforceConversationAccess(app, uuid, user)
+	_, err = enforceConversationAccess(app, uuid, user)
 	if err != nil {
 		return sendErrorEnvelope(r, err)
 	}
@@ -643,108 +395,6 @@ func handleUpdateConversationStatus(r *fastglue.Request) error {
 	if err := app.conversation.UpdateConversationStatus(uuid, 0 /**status_id**/, status, snoozedUntil, user); err != nil {
 		return sendErrorEnvelope(r, err)
 	}
-	markAssignmentNotificationRead(app, conversation, user)
-	return r.SendEnvelope(true)
-}
-
-// handleUpdateConversationtags updates conversation tags.
-func handleUpdateConversationtags(r *fastglue.Request) error {
-	var (
-		app   = r.Context.(*App)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-		uuid  = r.RequestCtx.UserValue("uuid").(string)
-		req   = tagsUpdateReq{}
-	)
-
-	if err := r.Decode(&req, "json"); err != nil {
-		app.lo.Error("error decoding tags update request", "error", err)
-		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.T("errors.parsingRequest"), nil, envelope.InputError)
-	}
-
-	tagNames := req.Tags
-
-	// Default to set tags if action is not provided (backwards compatibility).
-	action := models.ActionSetTags
-	switch req.Action {
-	case models.ActionAddTags, models.ActionRemoveTags, models.ActionSetTags:
-		action = req.Action
-	case "":
-	default:
-		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.T("errors.parsingRequest"), nil, envelope.InputError)
-	}
-
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	_, err = enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	if err := app.conversation.SetConversationTags(uuid, action, tagNames, user); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	return r.SendEnvelope(true)
-}
-
-// handleUpdateConversationCustomAttributes updates custom attributes of a conversation.
-func handleUpdateConversationCustomAttributes(r *fastglue.Request) error {
-	var (
-		app        = r.Context.(*App)
-		attributes = map[string]any{}
-		auser      = r.RequestCtx.UserValue("user").(amodels.User)
-		uuid       = r.RequestCtx.UserValue("uuid").(string)
-	)
-	if err := r.Decode(&attributes, ""); err != nil {
-		app.lo.Error("error unmarshalling custom attributes JSON", "error", err)
-		return r.SendErrorEnvelope(fasthttp.StatusInternalServerError, app.i18n.T("errors.parsingRequest"), nil, envelope.InputError)
-	}
-
-	// Enforce conversation access.
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	_, err = enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-
-	// Update custom attributes.
-	if err := app.conversation.UpdateConversationCustomAttributes(uuid, attributes); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	return r.SendEnvelope(true)
-}
-
-// handleUpdateContactCustomAttributes updates custom attributes of a contact.
-func handleUpdateContactCustomAttributes(r *fastglue.Request) error {
-	var (
-		app        = r.Context.(*App)
-		attributes = map[string]any{}
-		auser      = r.RequestCtx.UserValue("user").(amodels.User)
-		uuid       = r.RequestCtx.UserValue("uuid").(string)
-	)
-	if err := r.Decode(&attributes, ""); err != nil {
-		app.lo.Error("error unmarshalling custom attributes JSON", "error", err)
-		return r.SendErrorEnvelope(fasthttp.StatusInternalServerError, app.i18n.T("errors.parsingRequest"), nil, envelope.InputError)
-	}
-
-	// Enforce conversation access.
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	conversation, err := enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	if err := app.user.SaveCustomAttributes(conversation.ContactID, attributes, false); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	// Broadcast update.
-	app.conversation.BroadcastContactUpdate(conversation.ContactID, map[string]any{"custom_attributes": attributes})
 	return r.SendEnvelope(true)
 }
 
@@ -762,58 +412,6 @@ func enforceConversationAccess(app *App, uuid string, user umodels.User) (*cmode
 		return nil, envelope.NewError(envelope.PermissionError, "Permission denied", nil)
 	}
 	return &conversation, nil
-}
-
-// handleRemoveUserAssignee removes the user assigned to a conversation.
-func handleRemoveUserAssignee(r *fastglue.Request) error {
-	var (
-		app   = r.Context.(*App)
-		uuid  = r.RequestCtx.UserValue("uuid").(string)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-	)
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	_, err = enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	if err = app.conversation.UnassignConversationUser(uuid, user); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	return r.SendEnvelope(true)
-}
-
-// handleRemoveTeamAssignee removes the team assigned to a conversation.
-func handleRemoveTeamAssignee(r *fastglue.Request) error {
-	var (
-		app   = r.Context.(*App)
-		uuid  = r.RequestCtx.UserValue("uuid").(string)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-	)
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	_, err = enforceConversationAccess(app, uuid, user)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	if err = app.conversation.RemoveConversationAssignee(uuid, "team", user); err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	return r.SendEnvelope(true)
-}
-
-// filterCurrentPreviousConv removes the current conversation from the list of previous conversations.
-func filterCurrentPreviousConv(convs []cmodels.PreviousConversation, uuid string) []cmodels.PreviousConversation {
-	for i, c := range convs {
-		if c.UUID == uuid {
-			return append(convs[:i], convs[i+1:]...)
-		}
-	}
-	return []cmodels.PreviousConversation{}
 }
 
 // handleCreateConversation creates a new conversation and sends a message to it.
@@ -837,33 +435,15 @@ func handleCreateConversation(r *fastglue.Request) error {
 
 	email := req.Email
 	to := []string{email}
-	user, err := app.user.GetAgentCachedOrLoad(auser.ID)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
 
 	contact := umodels.User{
 		Email:            null.StringFrom(email),
 		FirstName:        req.FirstName,
 		LastName:         req.LastName,
-		ExternalUserID:   null.NewString(req.ExternalUserID, req.ExternalUserID != ""),
 		CustomAttributes: json.RawMessage(`{}`),
 	}
-	canWriteContacts, err := app.authz.Enforce(user, "contacts", "write")
-	if err != nil {
-		app.lo.Error("error checking permission", "error", err)
-		return sendErrorEnvelope(r, envelope.NewError(envelope.GeneralError, app.i18n.T("globals.messages.somethingWentWrong"), nil))
-	}
-	policy := umodels.ContactReuse
-	if canWriteContacts && !req.ReuseContact {
-		policy = umodels.ContactSync
-	}
-	if err := app.user.ResolveContact(&contact, policy); err != nil {
-		return sendErrorEnvelope(r, envelope.NewError(envelope.GeneralError, app.i18n.T("globals.messages.somethingWentWrong"), nil))
-	}
-	// A contact matched by external ID keeps its stored email as the recipient.
-	if policy == umodels.ContactReuse && contact.Email.String != "" {
-		to = []string{contact.Email.String}
+	if err := app.user.ResolveEmailSender(&contact); err != nil {
+		return sendErrorEnvelope(r, err)
 	}
 
 	// Create conversation first.
@@ -875,7 +455,7 @@ func handleCreateConversation(r *fastglue.Request) error {
 		req.Subject,
 		true, /** append reference number to subject? **/
 		nil,
-		req.CustomAttributes,
+		nil,
 		0, 0,
 	)
 	if err != nil {
@@ -887,14 +467,6 @@ func handleCreateConversation(r *fastglue.Request) error {
 	media, err := getUnassociatedMedia(app, req.Attachments)
 	if err != nil {
 		return r.SendErrorEnvelope(fasthttp.StatusInternalServerError, app.i18n.T("globals.messages.somethingWentWrong"), nil, envelope.GeneralError)
-	}
-
-	// Assign team first, it clears any assigned agent.
-	if req.AssignedTeamID > 0 {
-		app.conversation.UpdateConversationTeamAssignee(conversationUUID, req.AssignedTeamID, user)
-	}
-	if req.AssignedAgentID > 0 {
-		app.conversation.UpdateConversationUserAssignee(conversationUUID, req.AssignedAgentID, user)
 	}
 
 	// Send initial message based on the initiator of conversation.
@@ -938,11 +510,9 @@ func validateCreateConversationRequest(req createConversationRequest, app *App) 
 		return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.required", "name", "`content`"), nil)
 	}
 	if req.Email == "" {
-		return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.required", "name", "`contact_email`"), nil)
+		return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.required", "name", "`email`"), nil)
 	}
-	if req.FirstName == "" {
-		return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.required", "name", "`first_name`"), nil)
-	}
+
 	if !stringutil.ValidEmail(req.Email) {
 		return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidEmail"), nil)
 	}
@@ -960,23 +530,6 @@ func validateCreateConversationRequest(req createConversationRequest, app *App) 
 	}
 	if inbox.Channel != "email" {
 		return envelope.NewError(envelope.InputError, app.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-
-	// Validate custom attribute keys. Skip unknown keys.
-	if len(req.CustomAttributes) > 0 {
-		attrs, err := app.customAttribute.GetAll("conversation")
-		if err != nil {
-			return err
-		}
-		validKeys := make(map[string]struct{}, len(attrs))
-		for _, a := range attrs {
-			validKeys[a.Key] = struct{}{}
-		}
-		for key := range req.CustomAttributes {
-			if _, ok := validKeys[key]; !ok {
-				delete(req.CustomAttributes, key)
-			}
-		}
 	}
 
 	return nil

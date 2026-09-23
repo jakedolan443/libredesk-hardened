@@ -76,7 +76,6 @@ type queries struct {
 	GetAllWebhooks     *sqlx.Stmt `query:"get-all-webhooks"`
 	GetWebhook         *sqlx.Stmt `query:"get-webhook"`
 	GetWebhookSecret   *sqlx.Stmt `query:"get-webhook-secret"`
-	GetActiveWebhooks  *sqlx.Stmt `query:"get-active-webhooks"`
 	GetWebhooksByEvent *sqlx.Stmt `query:"get-webhooks-by-event"`
 	InsertWebhook      *sqlx.Stmt `query:"insert-webhook"`
 	UpdateWebhook      *sqlx.Stmt `query:"update-webhook"`

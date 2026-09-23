@@ -13,15 +13,9 @@ const (
 	ModelResourceImages  = "resource_images"
 	ModelMessages        = "messages"
 	ModelUser            = "users"
-	ModelHelpArticles    = "help_articles"
 
 	DispositionInline = "inline"
 )
-
-// IsPublicModel reports whether media linked to the model type is served without authentication.
-func IsPublicModel(modelType string) bool {
-	return modelType == ModelHelpArticles
-}
 
 // Media represents an uploaded object in DB and storage backend.
 type Media struct {

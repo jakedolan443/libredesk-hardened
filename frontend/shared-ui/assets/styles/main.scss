@@ -281,10 +281,6 @@
   @apply w-full max-w-none min-w-0 rounded-none border-0 bg-transparent px-0 py-4 shadow-none;
 }
 
-.email-message-card {
-  @apply border-b border-border/70;
-}
-
 .email-message-header {
   @apply flex items-start gap-4 px-1 pt-4;
 }
@@ -293,7 +289,7 @@
   @apply shrink-0 whitespace-nowrap pt-0.5 text-xs text-muted-foreground;
 }
 
-// Sender colours are only legible against white, so incoming email HTML is not themed.
+// Preserve a light canvas for incoming and outgoing email HTML with authored colours.
 .dark .email-light-canvas {
   @apply p-1.5 rounded border border-border;
 

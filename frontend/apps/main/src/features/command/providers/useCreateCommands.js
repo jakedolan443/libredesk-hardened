@@ -36,7 +36,7 @@ export function useCreateCommands() {
       section: SECTIONS.ACTIONS,
       icon: MessageSquarePlus,
       permission: permissions.CONVERSATIONS_WRITE,
-      shortcut: ['Alt', 'C'],
+
       run: () => emitter.emit(EMITTER_EVENTS.OPEN_CREATE_CONVERSATION, {})
     },
     {

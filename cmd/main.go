@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/knadh/go-i18n"
 	"hash/fnv"
 	"log"
 	"os"
@@ -18,31 +19,24 @@ import (
 
 	_ "time/tzdata"
 
-	activitylog "github.com/abhinavxd/libredesk/internal/activity_log"
-	"github.com/abhinavxd/libredesk/internal/ai"
-	"github.com/abhinavxd/libredesk/internal/aiagent"
 	auth_ "github.com/abhinavxd/libredesk/internal/auth"
 	"github.com/abhinavxd/libredesk/internal/authz"
-	businesshours "github.com/abhinavxd/libredesk/internal/business_hours"
+
 	"github.com/abhinavxd/libredesk/internal/colorlog"
-	"github.com/abhinavxd/libredesk/internal/csat"
-	customAttribute "github.com/abhinavxd/libredesk/internal/custom_attribute"
-	"github.com/abhinavxd/libredesk/internal/macro"
-	notifier "github.com/abhinavxd/libredesk/internal/notification"
-	"github.com/abhinavxd/libredesk/internal/report"
+
+	accountmail "github.com/abhinavxd/libredesk/internal/accountmail"
+
 	"github.com/abhinavxd/libredesk/internal/resourceimage"
 	"github.com/abhinavxd/libredesk/internal/search"
-	"github.com/abhinavxd/libredesk/internal/sla"
+
 	umodels "github.com/abhinavxd/libredesk/internal/user/models"
 	"github.com/abhinavxd/libredesk/internal/view"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/abhinavxd/libredesk/internal/automation"
-	contextlink "github.com/abhinavxd/libredesk/internal/context_link"
 	"github.com/abhinavxd/libredesk/internal/conversation"
-	"github.com/abhinavxd/libredesk/internal/conversation/priority"
+
 	"github.com/abhinavxd/libredesk/internal/conversation/status"
-	"github.com/abhinavxd/libredesk/internal/helpcenter"
+
 	"github.com/abhinavxd/libredesk/internal/importer"
 	"github.com/abhinavxd/libredesk/internal/inbox"
 	"github.com/abhinavxd/libredesk/internal/media"
@@ -50,14 +44,13 @@ import (
 	"github.com/abhinavxd/libredesk/internal/ratelimit"
 	"github.com/abhinavxd/libredesk/internal/role"
 	"github.com/abhinavxd/libredesk/internal/setting"
-	"github.com/abhinavxd/libredesk/internal/tag"
 	"github.com/abhinavxd/libredesk/internal/team"
 	"github.com/abhinavxd/libredesk/internal/template"
 	"github.com/abhinavxd/libredesk/internal/user"
 	"github.com/abhinavxd/libredesk/internal/webhook"
 	"github.com/abhinavxd/libredesk/internal/ws"
 	wsmodels "github.com/abhinavxd/libredesk/internal/ws/models"
-	"github.com/knadh/go-i18n"
+
 	"github.com/knadh/koanf/v2"
 	"github.com/knadh/stuffbin"
 	"github.com/valyala/fasthttp"
@@ -71,7 +64,6 @@ var (
 	ctx         = context.Background()
 	appName     = "libredesk"
 	frontendDir = "frontend/dist/main"
-	widgetDir   = "frontend/dist/widget"
 
 	// Injected at build time.
 	buildString   string
@@ -97,50 +89,33 @@ const (
 
 // App is the global app context which is passed and injected in the http handlers.
 type App struct {
-	resourceImages   *resourceimage.Store
-	ctx              context.Context
-	fs               stuffbin.FileSystem
-	consts           atomic.Value
-	auth             *auth_.Auth
-	authz            *authz.Enforcer
-	i18n             *i18n.I18n
-	lo               *logf.Logger
-	oidc             *oidc.Manager
-	media            *media.Manager
-	setting          *setting.Manager
-	role             *role.Manager
-	user             *user.Manager
-	team             *team.Manager
-	status           *status.Manager
-	priority         *priority.Manager
-	tag              *tag.Manager
-	inbox            *inbox.Manager
-	tmpl             *template.Manager
-	macro            *macro.Manager
-	conversation     *conversation.Manager
-	automation       *automation.Engine
-	businessHours    *businesshours.Manager
-	sla              *sla.Manager
-	csat             *csat.Manager
-	view             *view.Manager
-	ai               *ai.Manager
-	aiAgent          *aiagent.Manager
-	helpcenter       *helpcenter.Manager
-	search           *search.Manager
-	activityLog      *activitylog.Manager
-	notifier         *notifier.Service
-	userNotification *notifier.UserNotificationManager
-	notificationPref *notifier.PreferenceManager
-	pushNotification *notifier.PushManager
-	customAttribute  *customAttribute.Manager
-	report           *report.Manager
-	webhook          *webhook.Manager
-	contextLink      *contextlink.Manager
-	rateLimit        *ratelimit.Limiter
-	redis            *redis.Client
-	fc               *fastcache.FastCache
-	importer         *importer.Importer
-	wsHub            *ws.Hub
+	resourceImages *resourceimage.Store
+	ctx            context.Context
+	fs             stuffbin.FileSystem
+	consts         atomic.Value
+	auth           *auth_.Auth
+	authz          *authz.Enforcer
+	i18n           *i18n.I18n
+	lo             *logf.Logger
+	oidc           *oidc.Manager
+	media          *media.Manager
+	setting        *setting.Manager
+	role           *role.Manager
+	user           *user.Manager
+	team           *team.Manager
+	status         *status.Manager
+	inbox          *inbox.Manager
+	tmpl           *template.Manager
+	conversation   *conversation.Manager
+	view           *view.Manager
+	search         *search.Manager
+	accountmail    *accountmail.Service
+	webhook        *webhook.Manager
+	rateLimit      *ratelimit.Limiter
+	redis          *redis.Client
+	fc             *fastcache.FastCache
+	importer       *importer.Importer
+	wsHub          *ws.Hub
 
 	// Global state that stores data on an available app update.
 	update *AppUpdate
@@ -228,22 +203,17 @@ func main() {
 	}
 
 	var (
-		autoAssignInterval          = ko.MustDuration("autoassigner.autoassign_interval")
 		unsnoozeInterval            = ko.MustDuration("conversation.unsnooze_interval")
 		draftRetentionDuration      = cmp.Or(ko.Duration("conversation.draft_retention_duration"), 360*time.Hour)
-		automationWorkers           = ko.MustInt("automation.worker_count")
 		messageOutgoingQWorkers     = ko.MustDuration("message.outgoing_queue_workers")
 		messageIncomingQWorkers     = ko.MustDuration("message.incoming_queue_workers")
 		messageOutgoingScanInterval = ko.MustDuration(msgOutgoingScanIntervalKey)
-		slaEvaluationInterval       = ko.MustDuration("sla.evaluation_interval")
 		lo                          = initLogger(appName)
 		rdb                         = initRedis()
 		constants                   = initConstants()
 		i18n                        = initI18n(fs)
-		csat                        = initCSAT(db, i18n)
 		oidc                        = initOIDC(db, settings, i18n)
 		status                      = initStatus(db, i18n)
-		priority                    = initPriority(db, i18n)
 		ssrfControl                 = initSSRFControl()
 		auth                        = initAuth(oidc, rdb, i18n, ssrfControl)
 		template                    = initTemplate(db, fs, constants, i18n)
@@ -251,23 +221,11 @@ func main() {
 		resourceImages              = resourceimage.NewStore(db, media, constants.UploadProvider, settings.GetResourcePolicyTx)
 		inbox                       = initInbox(db, i18n)
 		team                        = initTeam(db, i18n)
-		businessHours               = initBusinessHours(db, i18n)
 		webhook                     = initWebhook(db, i18n, ssrfControl)
 		user                        = initUser(i18n, db)
 		wsHub                       = initWS(user)
-		notifier                    = initNotifier()
-		userNotification            = initUserNotification(db, i18n)
-		notificationPreference      = initNotificationPreference(db, i18n)
-		pushNotification            = initPushNotification(db, settings, i18n)
-		notificationEmailQueue      = initNotificationEmailQueue(db, notifier)
-		notifDispatcher             = initNotifDispatcher(userNotification, notificationPreference, pushNotification, notificationEmailQueue, wsHub, ko.Bool("notification.email.enabled"))
-		automation                  = initAutomationEngine(db, i18n)
-		ai                          = initAI(ctx, db, i18n, ssrfControl)
-		sla                         = initSLA(db, team, settings, businessHours, template, user, i18n, notifDispatcher)
-		conversation                = initConversations(i18n, sla, status, priority, wsHub, db, inbox, user, team, media, settings, csat, automation, template, webhook, notifDispatcher, resourceImages)
-		aiAgent                     = initAIAgent(db, i18n, ai, conversation, media, settings, user, notifier, rdb)
-		helpCenter                  = initHelpCenter(db, i18n, ai)
-		autoassigner                = initAutoAssigner(team, user, conversation)
+		accountmail                 = initAccountMailer()
+		conversation                = initConversations(i18n, status, wsHub, db, inbox, user, media, settings, template, webhook, resourceImages)
 		rateLimiter                 = initRateLimit(rdb)
 	)
 
@@ -288,91 +246,52 @@ func main() {
 	})
 
 	wsHub.SetConversationStore(conversation)
-	automation.SetConversationStore(conversation)
-	systemUser, err := user.GetSystemUser()
-	if err != nil {
-		log.Fatalf("error fetching system user: %v", err)
-	}
-	automation.SetSystemUserID(systemUser.ID)
-	conversation.SetAIAgent(aiAgent)
 
 	startInboxes(ctx, inbox, conversation, user, conversation.SignAvatarURL)
 
-	go automation.Run(ctx, automationWorkers)
-	go autoassigner.Run(ctx, autoAssignInterval)
 	go conversation.Run(ctx, messageIncomingQWorkers, messageOutgoingQWorkers, messageOutgoingScanInterval)
 	go conversation.RunUnsnoozer(ctx, unsnoozeInterval)
-	go conversation.RunContinuity(ctx)
 	go webhook.Run(ctx)
-	go notifier.Run(ctx)
-	go sla.Run(ctx, slaEvaluationInterval)
-	go sla.SendNotifications(ctx)
+	go accountmail.Run(ctx)
 	go media.DeleteUnlinkedMedia(ctx)
 	go resourceImages.RunCacheCleaner(ctx, func(err error) { lo.Error("error cleaning external image cache", "error", err) })
 	go user.MonitorUserAvailability(ctx, onUsersOffline(conversation))
 	go conversation.RunDraftCleaner(ctx, draftRetentionDuration)
-	go userNotification.RunNotificationCleaner(ctx)
-	go helpCenter.RunSearchLogCleaner(ctx)
-	if ko.Bool("notification.email.enabled") {
-		go notificationEmailQueue.Run(ctx)
-	}
-	go pushNotification.Run(ctx)
-	go aiAgent.Run(ctx, cmp.Or(ko.Int("ai_agent.worker_count"), 10))
-	go ai.Run(ctx)
 
 	var app = &App{
-		ctx:              ctx,
-		lo:               lo,
-		fs:               fs,
-		sla:              sla,
-		oidc:             oidc,
-		i18n:             i18n,
-		auth:             auth,
-		media:            media,
-		setting:          settings,
-		inbox:            inbox,
-		user:             user,
-		team:             team,
-		csat:             csat,
-		status:           status,
-		priority:         priority,
-		tmpl:             template,
-		notifier:         notifier,
-		consts:           atomic.Value{},
-		conversation:     conversation,
-		automation:       automation,
-		businessHours:    businessHours,
-		activityLog:      initActivityLog(db, i18n),
-		customAttribute:  initCustomAttribute(db, i18n),
-		authz:            initAuthz(i18n),
-		view:             initView(db, i18n),
-		report:           initReport(db, i18n),
-		search:           initSearch(db, i18n, conversation),
-		role:             initRole(db, i18n),
-		tag:              initTag(db, i18n),
-		macro:            initMacro(db, i18n),
-		ai:               ai,
-		aiAgent:          aiAgent,
-		helpcenter:       helpCenter,
-		importer:         initImporter(i18n),
-		webhook:          webhook,
-		contextLink:      initContextLink(db, i18n),
-		rateLimit:        rateLimiter,
-		redis:            rdb,
-		resourceImages:   resourceImages,
-		fc:               initFastCache(rdb),
-		userNotification: userNotification,
-		notificationPref: notificationPreference,
-		pushNotification: pushNotification,
-		wsHub:            wsHub,
+		ctx:            ctx,
+		lo:             lo,
+		fs:             fs,
+		oidc:           oidc,
+		i18n:           i18n,
+		auth:           auth,
+		media:          media,
+		setting:        settings,
+		inbox:          inbox,
+		user:           user,
+		team:           team,
+		status:         status,
+		tmpl:           template,
+		accountmail:    accountmail,
+		consts:         atomic.Value{},
+		conversation:   conversation,
+		authz:          initAuthz(i18n),
+		view:           initView(db, i18n),
+		search:         initSearch(db, i18n, conversation),
+		role:           initRole(db, i18n),
+		importer:       initImporter(i18n),
+		webhook:        webhook,
+		rateLimit:      rateLimiter,
+		redis:          rdb,
+		resourceImages: resourceImages,
+		fc:             initFastCache(rdb),
+		wsHub:          wsHub,
 	}
 	app.consts.Store(constants)
-	helpCenterCacheOpts.Logger = log.New(helpCenterCacheLogWriter{lo: app.lo}, "", 0)
 
 	g := fastglue.NewGlue()
 	g.SetContext(app)
 	initHandlers(g, wsHub)
-	g.Router.NotFound = helpCenterHostNotFound(app, g)
 
 	// Buffers above this are dropped rather than reused, and the ones we keep stay with the connection until it closes.
 	fasthttp.SetBodySizePoolLimit(64<<10, 128<<10) // request: 64 KiB, response: 128 KiB
@@ -404,8 +323,7 @@ func main() {
 	// Wait for shutdown signal.
 	<-ctx.Done()
 	closedAgentConns := wsHub.CloseAll()
-	closedLiveChatInboxes := inbox.CloseLiveChatClients()
-	colorlog.Red("Closed %d agent websocket connections and %d livechat inboxes.", closedAgentConns, closedLiveChatInboxes)
+	colorlog.Red("Closed %d mailbox websocket connections.", closedAgentConns)
 	colorlog.Red("Shutting down HTTP server...")
 	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), serverShutdownTimeout)
 	if err := s.ShutdownWithContext(shutdownCtx); err != nil {
@@ -416,24 +334,14 @@ func main() {
 		}
 	}
 	cancelShutdown()
-	colorlog.Red("Shutting down AI agent...")
-	aiAgent.Close()
-	colorlog.Red("Shutting down AI...")
-	ai.Close()
 	colorlog.Red("Shutting down inboxes...")
 	inbox.Close()
-	colorlog.Red("Shutting down automation...")
-	automation.Close()
-	colorlog.Red("Shutting down autoassigner...")
-	autoassigner.Close()
-	colorlog.Red("Shutting down notifier...")
-	notifier.Close()
+	colorlog.Red("Shutting down accountmail...")
+	accountmail.Close()
 	colorlog.Red("Shutting down webhook...")
 	webhook.Close()
 	colorlog.Red("Shutting down conversation...")
 	conversation.Close()
-	colorlog.Red("Shutting down SLA...")
-	sla.Close()
 	colorlog.Red("Shutting down importer...")
 	app.importer.Close()
 	colorlog.Red("Shutting down database...")
@@ -451,8 +359,6 @@ func onUsersOffline(conv *conversation.Manager) func([]umodels.OfflineUser) {
 			switch u.Type {
 			case umodels.UserTypeAgent:
 				conv.BroadcastAgentAvailability(u.ID, umodels.Offline)
-			case umodels.UserTypeContact, umodels.UserTypeVisitor:
-				conv.BroadcastContactUpdate(u.ID, map[string]any{"availability_status": umodels.Offline})
 			}
 		}
 	}

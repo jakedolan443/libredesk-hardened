@@ -7,7 +7,7 @@
     @update:open="onOpenChange"
     :class="[
       'z-[51] !top-[44%] !w-[calc(100%-1.5rem)] !min-w-0 gap-0 rounded-lg border-border/80 bg-popover shadow-lg [&>button]:right-3 [&>button]:top-3 [&>button]:rounded-md [&>button]:bg-muted/70 [&>button]:opacity-60 [&>button]:hover:opacity-100',
-      isMacroMode ? '!max-w-5xl' : '!max-w-2xl'
+      '!max-w-2xl'
     ]"
     command-class="rounded-lg bg-popover [&_[cmdk-input-wrapper]]:h-14 [&_[cmdk-input-wrapper]]:border-border/70 [&_[cmdk-input-wrapper]]:px-4 [&_[cmdk-input-wrapper]_svg]:text-muted-foreground [&_[cmdk-input]]:h-14 [&_[cmdk-input]]:pr-10 [&_[cmdk-input]]:text-base [&_[cmdk-group]]:py-2 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:pt-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-item]]:mx-0.5 [&_[cmdk-item]]:rounded-md [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2 [&_[cmdk-item]]:transition-colors [&_[cmdk-item]]:duration-150"
   >
@@ -29,32 +29,13 @@
     </div>
 
     <CommandInput :placeholder="placeholder" :loading="loading" @keydown="onInputKeydown" />
-    <CommandList
-      :key="parent || 'root'"
-      :class="
-        isMacroMode
-          ? 'h-[50vh] min-h-[50vh] min-w-[50vw] overflow-hidden [&>div]:h-full'
-          : 'h-auto min-h-[220px] max-h-[min(52vh,440px)]'
-      "
-    >
+    <CommandList :key="parent || 'root'" :class="'h-auto min-h-[220px] max-h-[min(52vh,440px)]'">
       <CommandEmpty v-if="!loading">
         <p class="text-sm text-muted-foreground">{{ emptyText }}</p>
       </CommandEmpty>
 
-      <MacroPicker
-        v-if="isMacroMode"
-        :search-term="searchTerm"
-        :highlighted-value="highlightedValue"
-        :macro-context="macroContext"
-        @applied="closePalette"
-      />
-
-      <template v-else>
-        <CommandGroup
-          v-for="group in groups"
-          :key="group.section"
-          :heading="group.label"
-        >
+      <template>
+        <CommandGroup v-for="group in groups" :key="group.section" :heading="group.label">
           <CommandItem
             v-for="command in group.commands"
             :key="command.id"
@@ -72,11 +53,6 @@
               {{ command.hint }}
             </span>
             <span class="ml-auto flex shrink-0 items-center gap-1 pl-3">
-              <template v-if="command.shortcut">
-                <kbd v-for="key in command.shortcut" :key="key" :class="KBD_CLASS">
-                  {{ KEY_LABELS[key] || key }}
-                </kbd>
-              </template>
               <ChevronRight
                 v-if="command.group || command.navigateTo"
                 class="!h-4 !w-4 text-muted-foreground"
@@ -132,31 +108,23 @@ import {
 import { handleHTTPError } from '@shared-ui/utils/http.js'
 import { useEmitter } from '@main/composables/useEmitter'
 import { EMITTER_EVENTS } from '@main/constants/emitterEvents'
-import MacroPicker from './MacroPicker.vue'
 import SnoozeDatePicker from './SnoozeDatePicker.vue'
-import { MACROS_COMMAND, useCommandPalette } from './useCommandPalette'
+import { useCommandPalette } from './useCommandPalette'
 import { useCommandRegistry, commandMatches } from './useCommandRegistry'
-import { useGlobalShortcuts } from './useGlobalShortcuts'
 import { SECTION_ORDER, SECTION_LABEL_KEYS, SECTION_LABEL_PLURAL } from './sections'
 import { useNavigationCommands } from './providers/useNavigationCommands'
 import { useCreateCommands } from './providers/useCreateCommands'
-import { useAccountCommands } from './providers/useAccountCommands'
 import { useConversationCommands } from './providers/useConversationCommands'
 import { useListCommands } from './providers/useListCommands'
 import { useBulkCommands } from './providers/useBulkCommands'
-import { useContactCommands } from './providers/useContactCommands'
 import { useEntitySearch, ENTITY_SEARCH_MIN_LENGTH } from './providers/useEntitySearch'
 
 const { t } = useI18n()
 const emitter = useEmitter()
 const palette = useCommandPalette()
-const { open, parent, searchTerm, macroContext, closePalette, setParent } = palette
+const { open, parent, searchTerm, closePalette, setParent } = palette
 const showSnoozeDatePicker = ref(false)
 const highlightedValue = ref('')
-const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
-const KEY_LABELS = isMac ? { Ctrl: '⌘', Alt: '⌥' } : {}
-
-useGlobalShortcuts()
 
 const openSnoozeDatePicker = () => {
   showSnoozeDatePicker.value = true
@@ -165,22 +133,16 @@ const openSnoozeDatePicker = () => {
 const registry = useCommandRegistry([
   useBulkCommands(),
   useConversationCommands({ openSnoozeDatePicker }),
-  useContactCommands(),
   useListCommands(),
   useCreateCommands(),
-  useNavigationCommands(),
-  useAccountCommands()
+  useNavigationCommands()
 ])
 const entitySearch = useEntitySearch()
 
-const isMacroMode = computed(() => parent.value === MACROS_COMMAND)
 const parentCommand = computed(() => registry.get(parent.value))
-const breadcrumb = computed(() =>
-  isMacroMode.value ? t('globals.terms.macro', 2) : parentCommand.value?.label || ''
-)
+const breadcrumb = computed(() => parentCommand.value?.label || '')
 
 const placeholder = computed(() => {
-  if (isMacroMode.value) return t('command.searchMacros')
   return parentCommand.value?.placeholder || t('command.searchOrJumpTo')
 })
 
@@ -231,13 +193,13 @@ watch(
     searchSeq++
     asyncResults.value = []
     loading.value = false
-    if (isOpen && !isMacroMode.value) runAsyncSearch()
+    if (isOpen) runAsyncSearch()
   }
 )
 watch(
   () => searchTerm.value,
   () => {
-    if (!open.value || isMacroMode.value) return
+    if (!open.value) return
     // The request only fires after the debounce, stale results would stay selectable until then.
     searchSeq++
     asyncResults.value = []
@@ -247,7 +209,6 @@ watch(
 )
 
 const visibleCommands = computed(() => {
-  if (isMacroMode.value) return []
   if (parentCommand.value?.search) return asyncResults.value
   return [...registry.childrenOf(parent.value), ...asyncResults.value]
 })
@@ -270,7 +231,6 @@ const groups = computed(() => {
 
 // Async results are already filtered by the server, static commands match on label and keywords.
 const filterFunction = (values, term) => {
-  if (isMacroMode.value) return values
   return values.filter((value) => {
     if (asyncIds.value.has(value)) return true
     const command = visibleById.value.get(value)
@@ -294,7 +254,6 @@ const onSelect = async (event, command) => {
 }
 
 const goBack = () => {
-  if (isMacroMode.value) return setParent(null)
   setParent(parentCommand.value?.parent || null)
 }
 

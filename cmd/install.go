@@ -58,6 +58,10 @@ func install(ctx context.Context, db *sqlx.DB, fs stuffbin.FileSystem, idempoten
 		log.Fatalf("error installing schema: %v", err)
 	}
 
+	if err := recordMigrationVersion(migList[len(migList)-1].version, db); err != nil {
+		return fmt.Errorf("recording installed schema version: %w", err)
+	}
+
 	log.Println("database schema installed successfully")
 
 	// Create system user.

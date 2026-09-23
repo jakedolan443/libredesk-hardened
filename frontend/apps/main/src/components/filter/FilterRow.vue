@@ -61,28 +61,15 @@
           <template
             v-if="modelValue.operator !== OPERATOR.SET && modelValue.operator !== OPERATOR.NOT_SET"
           >
-            <SelectTagCombobox
-              v-if="fieldEntity === 'tag'"
-              :multiple="fieldType === FIELD_TYPE.MULTI_SELECT"
-              value-field="id"
-              v-model="leafValue"
-            />
-
             <SelectTag
-              v-else-if="fieldType === FIELD_TYPE.MULTI_SELECT"
+              v-if="fieldType === FIELD_TYPE.MULTI_SELECT"
               v-model="leafValue"
               :items="fieldOptions"
-              :placeholder="t('placeholders.selectTags')"
+              :placeholder="t('placeholders.selectValue')"
             />
 
             <SelectAgentCombobox
               v-else-if="fieldEntity === 'agent'"
-              v-model="leafValue"
-              :placeholder="t('placeholders.selectValue')"
-            />
-
-            <SelectTeamCombobox
-              v-else-if="fieldEntity === 'team'"
               v-model="leafValue"
               :placeholder="t('placeholders.selectValue')"
             />
@@ -125,8 +112,6 @@ import { FIELD_TYPE, OPERATOR, operatorLabel } from '@/constants/filterConfig'
 import CloseButton from '@/components/button/CloseButton.vue'
 import SelectComboBox from '@/components/combobox/SelectCombobox.vue'
 import SelectAgentCombobox from '@/components/combobox/SelectAgentCombobox.vue'
-import SelectTeamCombobox from '@/components/combobox/SelectTeamCombobox.vue'
-import SelectTagCombobox from '@/components/combobox/SelectTagCombobox.vue'
 import SelectTag from '@shared-ui/components/ui/select/SelectTag.vue'
 import DateFilterValue from '@/components/filter/DateFilterValue.vue'
 

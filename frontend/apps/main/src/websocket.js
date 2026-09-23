@@ -1,12 +1,11 @@
 import { useConversationStore } from './stores/conversation'
-import { useNotificationStore } from './stores/notification'
+
 import { useUsersStore } from './stores/users'
 import { useConnectionStore } from './stores/connection'
 import { WS_EVENT, WS_EPHEMERAL_TYPES } from './constants/websocket'
 import { EMITTER_EVENTS } from './constants/emitterEvents.js'
 import { useEmitter } from './composables/useEmitter'
 import { getI18n } from './i18n'
-import { playNotificationSound } from '@shared-ui/composables/useNotificationSound'
 
 export class WebSocketClient {
   constructor() {
@@ -21,7 +20,7 @@ export class WebSocketClient {
     this.pingInterval = null
     this.lastPong = Date.now()
     this.convStore = useConversationStore()
-    this.notificationStore = useNotificationStore()
+
     this.usersStore = useUsersStore()
     this.connectionStore = useConnectionStore()
     this.emitter = useEmitter()
@@ -88,7 +87,6 @@ export class WebSocketClient {
         [WS_EVENT.NEW_MESSAGE]: () => {
           const uuid = data.data.conversation_uuid
           const isOpen = this.convStore.conversation.data?.uuid === uuid
-          const isFromContact = data.data.sender_type === 'contact'
           const convPayload = data.data.conversation
 
           if (convPayload) {
@@ -100,14 +98,6 @@ export class WebSocketClient {
               last_message_at: data.data.created_at,
               last_message_sender: data.data.sender_type
             })
-          }
-
-          if (isFromContact && document.hidden) {
-            if (isOpen || this.convStore.isConversationInList(uuid)) {
-              playNotificationSound()
-            } else {
-              this.convStore.addPendingNotification(uuid)
-            }
           }
 
           if (!isOpen && this.convStore.isConversationInList(uuid)) {
@@ -136,12 +126,7 @@ export class WebSocketClient {
         [WS_EVENT.TYPING]: () => {
           this.convStore.updateTypingStatus(data.data)
         },
-        // New notification.
-        [WS_EVENT.NEW_NOTIFICATION]: () => {
-          this.notificationStore.addNotification(data.data)
-          // Mentions and assignments arrive as notifications without a conversation_update.
-          this.convStore.refreshSidebarCounts()
-        },
+
         [WS_EVENT.AGENT_AVAILABILITY_UPDATE]: () =>
           this.usersStore.setAvailability(data.data.agent_id, data.data.availability_status),
         [WS_EVENT.SYSTEM_TOAST]: () => {

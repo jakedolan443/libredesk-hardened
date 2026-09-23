@@ -78,20 +78,8 @@ func handleMediaUpload(r *fastglue.Request) error {
 		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, "Invalid upload model", nil, envelope.InputError)
 	}
 
-	// Only agents who manage the help center may upload publicly served media.
-	if mmodels.IsPublicModel(linkedModel) {
-		auser := r.RequestCtx.UserValue("user").(amodels.User)
-		agent, err := app.user.GetAgentCachedOrLoad(auser.ID)
-		if err != nil {
-			return sendErrorEnvelope(r, err)
-		}
-		allowed, err := app.authz.Enforce(agent, "help_center", "manage")
-		if err != nil {
-			return sendErrorEnvelope(r, err)
-		}
-		if !allowed {
-			return r.SendErrorEnvelope(fasthttp.StatusForbidden, app.i18n.T("status.deniedPermission"), nil, envelope.PermissionError)
-		}
+	if linkedModel != "" && linkedModel != mmodels.ModelMessages && linkedModel != mmodels.ModelUser {
+		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, "Invalid upload model", nil, envelope.InputError)
 	}
 
 	// Sanitize filename.
@@ -133,7 +121,7 @@ func handleMediaUpload(r *fastglue.Request) error {
 		}
 		meta = prepared.meta
 	}
-	media, err := app.media.UploadAndInsert(srcFileName, srcContentType, "", null.NewString(linkedModel, linkedModel != ""), null.Int{}, file, int(srcFileSize), disposition, meta, !mmodels.IsPublicModel(linkedModel))
+	media, err := app.media.UploadAndInsert(srcFileName, srcContentType, "", null.NewString(linkedModel, linkedModel != ""), null.Int{}, file, int(srcFileSize), disposition, meta, true)
 	if err != nil {
 		return sendErrorEnvelope(r, err)
 	}

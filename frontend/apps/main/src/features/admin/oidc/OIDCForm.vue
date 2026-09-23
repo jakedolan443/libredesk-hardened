@@ -19,9 +19,7 @@
           <FormControl>
             <Select v-bind="componentField">
               <SelectTrigger>
-                <SelectValue
-                  :placeholder="t('placeholders.selectProvider')"
-                />
+                <SelectValue :placeholder="t('placeholders.selectProvider')" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -56,7 +54,11 @@
         </FormItem>
       </FormField>
 
-      <FormField v-slot="{ componentField }" name="logo_url" v-if="form.values.provider === 'Custom'">
+      <FormField
+        v-slot="{ componentField }"
+        name="logo_url"
+        v-if="form.values.provider === 'Custom'"
+      >
         <FormItem v-auto-animate>
           <FormLabel>{{ $t('globals.terms.logoUrl') }}</FormLabel>
           <FormControl>
@@ -97,7 +99,6 @@
           <FormMessage />
         </FormItem>
       </FormField>
-
     </div>
 
     <Button type="submit" :isLoading="isLoading"> {{ submitLabel }} </Button>
@@ -112,7 +113,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { createFormSchema } from './formSchema.js'
 import { Checkbox } from '@shared-ui/components/ui/checkbox/index.js'
 import { Label } from '@shared-ui/components/ui/label/index.js'
-import { vAutoAnimate } from '@formkit/auto-animate/vue'
+
 import { useI18n } from 'vue-i18n'
 import {
   FormControl,
@@ -157,11 +158,14 @@ const props = defineProps({
 const { t } = useI18n()
 
 const submitLabel = computed(() => {
-  return props.submitLabel || (props.isNewForm ? t('globals.messages.create') : t('globals.messages.save'))
+  return (
+    props.submitLabel ||
+    (props.isNewForm ? t('globals.messages.create') : t('globals.messages.save'))
+  )
 })
 
 const form = useForm({
-  validationSchema: toTypedSchema(createFormSchema(t)),
+  validationSchema: toTypedSchema(createFormSchema(t))
 })
 
 const onSubmit = form.handleSubmit((values) => {

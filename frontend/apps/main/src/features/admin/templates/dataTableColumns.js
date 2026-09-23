@@ -10,8 +10,11 @@ export const createOutgoingEmailTableColumns = (t) => [
       return h('div', { class: 'text-center' }, t('globals.terms.name'))
     },
     cell: function ({ row }) {
-      return h('div', { class: 'text-center' },
-        h(RouterLink,
+      return h(
+        'div',
+        { class: 'text-center' },
+        h(
+          RouterLink,
           {
             to: { name: 'edit-template', params: { id: row.original.id } },
             class: 'text-foreground font-medium hover:underline'
@@ -37,53 +40,6 @@ export const createOutgoingEmailTableColumns = (t) => [
       ])
     }
   },
-  {
-    accessorKey: 'created_at',
-    enableGlobalFilter: false,
-    header: function () {
-      return h('div', { class: 'text-center' }, t('globals.terms.createdAt'))
-    },
-    cell: function ({ row }) {
-      return h('div', { class: 'text-center' }, format(row.getValue('created_at'), 'PPpp'))
-    }
-  },
-  {
-    id: 'actions',
-    enableHiding: false,
-    enableSorting: false,
-    cell: ({ row }) => {
-      const template = row.original
-      return h(
-        'div',
-        { class: 'relative' },
-        h(dropdown, {
-          template
-        })
-      )
-    }
-  }
-]
-
-
-export const createEmailNotificationTableColumns = (t) => [
-  {
-    accessorKey: 'name',
-    header: function () {
-      return h('div', { class: 'text-center' }, t('globals.terms.name'))
-    },
-    cell: function ({ row }) {
-      return h('div', { class: 'text-center' },
-        h(RouterLink,
-          {
-            to: { name: 'edit-template', params: { id: row.original.id } },
-            class: 'text-foreground font-medium hover:underline'
-          },
-          () => row.getValue('name')
-        )
-      )
-    }
-  },
-
   {
     accessorKey: 'created_at',
     enableGlobalFilter: false,

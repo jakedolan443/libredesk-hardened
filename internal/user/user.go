@@ -8,7 +8,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/hex"
-	"encoding/json"
+
 	"errors"
 	"fmt"
 	"os"
@@ -78,46 +78,22 @@ type Opts struct {
 
 // queries contains prepared SQL queries.
 type queries struct {
-	GetImageSenders               *sqlx.Stmt `query:"get-image-senders"`
-	SetImageSender                *sqlx.Stmt `query:"set-image-sender"`
-	GetUser                       *sqlx.Stmt `query:"get-user"`
-	GetNotes                      *sqlx.Stmt `query:"get-notes"`
-	GetNote                       *sqlx.Stmt `query:"get-note"`
-	GetUserIDsByRole              *sqlx.Stmt `query:"get-user-ids-by-role"`
-	GetUserByExternalID           *sqlx.Stmt `query:"get-user-by-external-id"`
-	GetUsersCompact               string     `query:"get-users-compact"`
-	GetAgentsCompact              *sqlx.Stmt `query:"get-agents-compact"`
-	GetAgentsCompactByIDs         *sqlx.Stmt `query:"get-agents-compact-by-ids"`
-	UpdateContact                 *sqlx.Stmt `query:"update-contact"`
-	UpdateContactBasicInfo        *sqlx.Stmt `query:"update-contact-basic-info"`
-	UpdateAgent                   *sqlx.Stmt `query:"update-agent"`
-	UpdateCustomAttributes        *sqlx.Stmt `query:"update-custom-attributes"`
-	UpsertCustomAttributes        *sqlx.Stmt `query:"upsert-custom-attributes"`
-	UpdateAvatar                  *sqlx.Stmt `query:"update-avatar"`
-	UpdateAvailability            *sqlx.Stmt `query:"update-availability"`
-	UpdateLastActiveAt            *sqlx.Stmt `query:"update-last-active-at"`
-	UpdateInactiveOffline         *sqlx.Stmt `query:"update-inactive-offline"`
-	GetAvailabilityStatus         *sqlx.Stmt `query:"get-availability-status"`
-	UpdateLastLoginAt             *sqlx.Stmt `query:"update-last-login-at"`
-	SoftDeleteAgent               *sqlx.Stmt `query:"soft-delete-agent"`
-	SetUserPassword               *sqlx.Stmt `query:"set-user-password"`
-	SetResetPasswordToken         *sqlx.Stmt `query:"set-reset-password-token"`
-	SetPassword                   *sqlx.Stmt `query:"set-password"`
-	DeleteNote                    *sqlx.Stmt `query:"delete-note"`
-	InsertAgent                   *sqlx.Stmt `query:"insert-agent"`
-	InsertContactWithExtID        *sqlx.Stmt `query:"insert-contact-with-external-id"`
-	InsertContactNoExtID          *sqlx.Stmt `query:"insert-contact-without-external-id"`
-	InsertContactIfAbsent         *sqlx.Stmt `query:"insert-contact-if-absent"`
-	InsertContact                 *sqlx.Stmt `query:"insert-contact"`
-	GetContactByEmail             *sqlx.Stmt `query:"get-contact-by-email"`
-	GetContactByEmailWithoutExtID *sqlx.Stmt `query:"get-contact-by-email-without-ext-id"`
-	IsEmailBlocked                *sqlx.Stmt `query:"is-email-blocked"`
-	SetExternalUserID             *sqlx.Stmt `query:"set-external-user-id"`
-	InsertNote                    *sqlx.Stmt `query:"insert-note"`
-	InsertVisitor                 *sqlx.Stmt `query:"insert-visitor"`
-	GetVisitorByEmail             *sqlx.Stmt `query:"get-visitor-by-email"`
-	UpgradeVisitorToContact       *sqlx.Stmt `query:"upgrade-visitor-to-contact"`
-	ToggleEnable                  *sqlx.Stmt `query:"toggle-enable"`
+	GetImageSenders       *sqlx.Stmt `query:"get-image-senders"`
+	SetImageSender        *sqlx.Stmt `query:"set-image-sender"`
+	GetUser               *sqlx.Stmt `query:"get-user"`
+	GetUsersCompact       string     `query:"get-users-compact"`
+	GetAgentsCompact      *sqlx.Stmt `query:"get-agents-compact"`
+	GetAgentsCompactByIDs *sqlx.Stmt `query:"get-agents-compact-by-ids"`
+	UpdateAgent           *sqlx.Stmt `query:"update-agent"`
+	UpdateAvatar          *sqlx.Stmt `query:"update-avatar"`
+	UpdateAvailability    *sqlx.Stmt `query:"update-availability"`
+	UpdateLastActiveAt    *sqlx.Stmt `query:"update-last-active-at"`
+	UpdateInactiveOffline *sqlx.Stmt `query:"update-inactive-offline"`
+	UpdateLastLoginAt     *sqlx.Stmt `query:"update-last-login-at"`
+	SoftDeleteAgent       *sqlx.Stmt `query:"soft-delete-agent"`
+	SetResetPasswordToken *sqlx.Stmt `query:"set-reset-password-token"`
+	SetPassword           *sqlx.Stmt `query:"set-password"`
+	InsertAgent           *sqlx.Stmt `query:"insert-agent"`
 
 	// API key queries
 	GetUserByAPIKey      *sqlx.Stmt `query:"get-user-by-api-key"`
@@ -125,10 +101,6 @@ type queries struct {
 	RevokeAPIKey         *sqlx.Stmt `query:"revoke-api-key"`
 	UpdateAPISecretHash  *sqlx.Stmt `query:"update-api-secret-hash"`
 	UpdateAPIKeyLastUsed *sqlx.Stmt `query:"update-api-key-last-used"`
-
-	MergeVisitorToContact *sqlx.Stmt `query:"merge-visitor-to-contact"`
-	DeleteContact         *sqlx.Stmt `query:"delete-contact"`
-	ExportContactData     *sqlx.Stmt `query:"export-contact-data"`
 }
 
 // New creates and returns a new instance of the Manager.
@@ -208,98 +180,8 @@ func (u *Manager) Get(id int, email string, userType []string) (models.User, err
 	return user, nil
 }
 
-// GetContactOrVisitor retrieves a user by ID or email that is either a contact or visitor.
-func (u *Manager) GetContactOrVisitor(id int, email string) (models.User, error) {
-	return u.Get(id, email, []string{models.UserTypeContact, models.UserTypeVisitor})
-}
-
 func (u *Manager) GetSystemUser() (models.User, error) {
 	return u.Get(0, models.SystemUserEmail, []string{models.UserTypeAgent})
-}
-
-// GetContactByExternalID retrieves a contact by external user ID.
-func (u *Manager) GetContactByExternalID(externalUserID string) (models.User, error) {
-	var user models.User
-	if err := u.q.GetUserByExternalID.Get(&user, externalUserID); err != nil {
-		if err == sql.ErrNoRows {
-			return user, envelope.NewError(envelope.NotFoundError, u.i18n.T("validation.notFoundUser"), nil)
-		}
-		u.lo.Error("error fetching user by external ID", "external_user_id", externalUserID, "error", err)
-		return user, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return user, nil
-}
-
-// GetContactByEmail retrieves a contact by email address regardless of external_user_id.
-func (u *Manager) GetContactByEmail(email string) (models.User, error) {
-	var user models.User
-	if err := u.q.GetContactByEmail.Get(&user, email); err != nil {
-		if err == sql.ErrNoRows {
-			return user, envelope.NewError(envelope.NotFoundError, u.i18n.T("validation.notFoundUser"), nil)
-		}
-		u.lo.Error("error fetching contact by email", "email", email, "error", err)
-		return user, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return user, nil
-}
-
-// GetContactByEmailWithoutExtID retrieves a contact by email that has no external_user_id set.
-func (u *Manager) GetContactByEmailWithoutExtID(email string) (models.User, error) {
-	var user models.User
-	if err := u.q.GetContactByEmailWithoutExtID.Get(&user, email); err != nil {
-		if err == sql.ErrNoRows {
-			return user, envelope.NewError(envelope.NotFoundError, u.i18n.T("validation.notFoundUser"), nil)
-		}
-		u.lo.Error("error fetching contact by email without ext_id", "email", email, "error", err)
-		return user, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return user, nil
-}
-
-// IsEmailBlocked checks if any contact or visitor with the given email is blocked.
-func (u *Manager) IsEmailBlocked(email string) (bool, error) {
-	var blocked bool
-	if err := u.q.IsEmailBlocked.Get(&blocked, email); err != nil {
-		u.lo.Error("error checking if email is blocked", "email", email, "error", err)
-		return false, fmt.Errorf("checking if email is blocked: %w", err)
-	}
-	return blocked, nil
-}
-
-// GetVisitorByEmail retrieves a visitor by email address.
-func (u *Manager) GetVisitorByEmail(email string) (models.User, error) {
-	var user models.User
-	if err := u.q.GetVisitorByEmail.Get(&user, email); err != nil {
-		if err == sql.ErrNoRows {
-			return user, envelope.NewError(envelope.NotFoundError, u.i18n.T("validation.notFoundUser"), nil)
-		}
-		u.lo.Error("error fetching visitor by email", "email", email, "error", err)
-		return user, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return user, nil
-}
-
-// UpgradeVisitorToContact changes a visitor's type to contact.
-func (u *Manager) UpgradeVisitorToContact(visitorID int) error {
-	if _, err := u.q.UpgradeVisitorToContact.Exec(visitorID); err != nil {
-		u.lo.Error("error upgrading visitor to contact", "visitor_id", visitorID, "error", err)
-		return fmt.Errorf("upgrading visitor to contact: %w", err)
-	}
-	return nil
-}
-
-// SetExternalUserID sets the external_user_id on an existing contact, reporting whether a row was updated.
-func (u *Manager) SetExternalUserID(id int, externalUserID string) (bool, error) {
-	res, err := u.q.SetExternalUserID.Exec(id, externalUserID)
-	if err != nil {
-		u.lo.Error("error setting external user ID", "id", id, "external_user_id", externalUserID, "error", err)
-		return false, fmt.Errorf("setting external user ID: %w", err)
-	}
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("setting external user ID: %w", err)
-	}
-	return rows > 0, nil
 }
 
 // UpdateAvatar updates the user avatar.
@@ -385,45 +267,6 @@ func (u *Manager) UpdateLastActive(id int) (wasOffline bool, err error) {
 	return wasOffline, nil
 }
 
-// IsOffline returns true if the user's availability status is offline.
-func (u *Manager) IsOffline(id int) bool {
-	var status string
-	if err := u.q.GetAvailabilityStatus.Get(&status, id); err != nil {
-		return true
-	}
-	return status == "offline"
-}
-
-// SaveCustomAttributes sets or merges custom attributes for a user.
-// If replace is true, existing attributes are overwritten. Otherwise, attributes are merged.
-func (u *Manager) SaveCustomAttributes(id int, customAttributes map[string]any, replace bool) error {
-	jsonb, err := json.Marshal(customAttributes)
-	if err != nil {
-		u.lo.Error("error marshalling custom attributes", "error", err)
-		return envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	var execErr error
-	if replace {
-		_, execErr = u.q.UpdateCustomAttributes.Exec(id, jsonb)
-	} else {
-		_, execErr = u.q.UpsertCustomAttributes.Exec(id, jsonb)
-	}
-	if execErr != nil {
-		u.lo.Error("error saving custom attributes", "error", execErr)
-		return envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return nil
-}
-
-// ToggleEnabled toggles the enabled status of an user.
-func (u *Manager) ToggleEnabled(id int, typ string, enabled bool) error {
-	if _, err := u.q.ToggleEnable.Exec(id, typ, enabled); err != nil {
-		u.lo.Error("error toggling user enabled status", "error", err)
-		return envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return nil
-}
-
 // GenerateAPIKey generates a new API key and secret for a user
 func (u *Manager) GenerateAPIKey(userID int) (string, string, error) {
 	// Generate API key (32 characters)
@@ -492,24 +335,6 @@ func (u *Manager) RevokeAPIKey(userID int) error {
 	return nil
 }
 
-// MergeVisitorToContact transfers conversations from visitor to contact and deletes the visitor.
-func (u *Manager) MergeVisitorToContact(visitorID, contactID int) error {
-	if _, err := u.q.MergeVisitorToContact.Exec(visitorID, contactID); err != nil {
-		u.lo.Error("error merging visitor to contact", "visitor_id", visitorID, "contact_id", contactID, "error", err)
-		return fmt.Errorf("merging visitor to contact: %w", err)
-	}
-	return nil
-}
-
-func (u *Manager) GetUserIDsByRole(roleID int) ([]int, error) {
-	var ids []int
-	if err := u.q.GetUserIDsByRole.Select(&ids, roleID); err != nil {
-		u.lo.Error("error fetching user ids by role", "role_id", roleID, "error", err)
-		return nil, err
-	}
-	return ids, nil
-}
-
 // ChangeSystemUserPassword updates the system user's password with a newly prompted one.
 func ChangeSystemUserPassword(ctx context.Context, db *sqlx.DB) error {
 	// Prompt for password and get hashed password
@@ -552,8 +377,8 @@ func CreateSystemUser(ctx context.Context, password string, db *sqlx.DB) error {
 			RETURNING id
 		)
 		INSERT INTO user_roles (user_id, role_id)
-		SELECT sys_user.id, roles.id 
-		FROM sys_user, roles 
+		SELECT sys_user.id, roles.id
+		FROM sys_user, roles
 		WHERE roles.name = $6`,
 		models.SystemUserEmail, models.UserTypeAgent, "System", "", hashedPassword, rmodels.RoleAdmin)
 	if err != nil {

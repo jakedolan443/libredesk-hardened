@@ -6,15 +6,7 @@ import { useConversationStore } from '@main/stores/conversation'
 import { useBulkActionPermissions } from '@main/composables/useBulkActionPermissions'
 import { SECTIONS } from '../sections'
 
-const SORT_FIELDS = [
-  'oldest',
-  'newest',
-  'started_first',
-  'started_last',
-  'waiting_longest',
-  'next_sla_target',
-  'priority_first'
-]
+const SORT_FIELDS = ['oldest', 'newest', 'started_first', 'started_last', 'waiting_longest']
 
 export const isConversationListRoute = (route) =>
   route.path.startsWith('/inboxes') && route.name !== 'search'

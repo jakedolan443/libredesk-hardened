@@ -16,15 +16,14 @@ import (
 	"time"
 
 	"github.com/abhinavxd/libredesk/internal/attachment"
-	amodels "github.com/abhinavxd/libredesk/internal/automation/models"
+
 	"github.com/abhinavxd/libredesk/internal/conversation/models"
 	"github.com/abhinavxd/libredesk/internal/envelope"
 	"github.com/abhinavxd/libredesk/internal/image"
 	"github.com/abhinavxd/libredesk/internal/inbox"
-	"github.com/abhinavxd/libredesk/internal/inbox/channel/livechat"
+
 	mmodels "github.com/abhinavxd/libredesk/internal/media/models"
-	"github.com/abhinavxd/libredesk/internal/resourcepolicy"
-	"github.com/abhinavxd/libredesk/internal/sla"
+
 	"github.com/abhinavxd/libredesk/internal/stringutil"
 	umodels "github.com/abhinavxd/libredesk/internal/user/models"
 	wmodels "github.com/abhinavxd/libredesk/internal/webhook/models"
@@ -189,7 +188,7 @@ func (m *Manager) sendOutgoingMessage(message models.Message) {
 
 	// Send message
 	err = inb.Send(outbound)
-	if err != nil && err != livechat.ErrClientNotConnected {
+	if err != nil {
 		handleError(err, "error sending message")
 		return
 	}
@@ -204,11 +203,6 @@ func (m *Manager) sendOutgoingMessage(message models.Message) {
 		return
 	}
 	if message.SenderID != systemUser.ID {
-		conversation, err := m.GetConversation(message.ConversationID, "", "")
-		if err != nil {
-			m.lo.Error("error fetching conversation", "conversation_id", message.ConversationID, "error", err)
-			return
-		}
 
 		now := time.Now()
 		nowStr := now.Format(time.RFC3339)
@@ -220,24 +214,11 @@ func (m *Manager) sendOutgoingMessage(message models.Message) {
 		} else if isFirstReply {
 			wsData["first_reply_at"] = nowStr
 			// Stamp the first-response SLA immediately.
-			if err := m.slaStore.EvaluateConversationSLA(message.ConversationID); err != nil {
-				m.lo.Error("error evaluating SLA after first reply", "conversation_id", message.ConversationID, "error", err)
-			}
-		}
 
-		// Mark latest SLA event for next response metric as met.
-		metAt, err := m.slaStore.SetLatestSLAEventMetAt(conversation.AppliedSLAID.Int, sla.MetricNextResponse)
-		if err != nil && !errors.Is(err, sla.ErrLatestSLAEventNotFound) {
-			m.lo.Error("error setting next response SLA event `met_at`", "conversation_id", conversation.ID, "metric", sla.MetricNextResponse, "applied_sla_id", conversation.AppliedSLAID.Int, "error", err)
-		} else if !metAt.IsZero() {
-			wsData["next_response_met_at"] = metAt.Format(time.RFC3339)
 		}
 
 		m.BroadcastConversationUpdate(message.ConversationUUID, wsData)
 
-		if message.ShouldEvaluateAutomation(systemUser.ID) {
-			m.automation.EvaluateConversationUpdateRulesByID(message.ConversationID, "", amodels.EventConversationMessageOutgoing, umodels.User{ID: message.SenderID})
-		}
 	}
 }
 
@@ -476,7 +457,7 @@ func (m *Manager) SendPrivateNote(media []mmodels.Media, senderID int, conversat
 		if err := m.InsertMentions(message.ConversationID, message.ID, senderID, mentions); err != nil {
 			m.lo.Error("error inserting mentions", "error", err)
 		}
-		go m.NotifyMention(conversationUUID, message, mentions, senderID)
+
 	}
 
 	return message, nil
@@ -690,66 +671,9 @@ func (m *Manager) insertMessage(ctx context.Context, message *models.Message) er
 	return nil
 }
 
-// RecordAssigneeUserChange records an activity for a user assignee change.
-func (m *Manager) RecordAssigneeUserChange(conversationUUID string, assigneeID int, actor umodels.User) error {
-	// Self assignment.
-	if assigneeID == actor.ID {
-		return m.InsertConversationActivity(models.ActivitySelfAssign, conversationUUID, actor.FullName(), actor)
-	}
-
-	// Assignment to another user.
-	assignee, err := m.userStore.GetAgentCachedOrLoad(assigneeID)
-	if err != nil {
-		return err
-	}
-	return m.InsertConversationActivity(models.ActivityAssignedUserChange, conversationUUID, assignee.FullName(), actor)
-}
-
-// RecordAssigneeUserRemoval records an activity for the removal of a user assignee.
-func (m *Manager) RecordAssigneeUserRemoval(conversationUUID string, assigneeID int, actor umodels.User) error {
-	if assigneeID == actor.ID {
-		return m.InsertConversationActivity(models.ActivitySelfUnassign, conversationUUID, actor.FullName(), actor)
-	}
-
-	assignee, err := m.userStore.GetAgentCachedOrLoad(assigneeID)
-	if err != nil {
-		return err
-	}
-	return m.InsertConversationActivity(models.ActivityAssigneeUserRemoved, conversationUUID, assignee.FullName(), actor)
-}
-
-// RecordAssigneeTeamChange records an activity for a team assignee change.
-func (m *Manager) RecordAssigneeTeamChange(conversationUUID string, teamID int, actor umodels.User) error {
-	team, err := m.teamStore.Get(teamID)
-	if err != nil {
-		return err
-	}
-	return m.InsertConversationActivity(models.ActivityAssignedTeamChange, conversationUUID, team.Name, actor)
-}
-
-// RecordPriorityChange records an activity for a priority change.
-func (m *Manager) RecordPriorityChange(priority, conversationUUID string, actor umodels.User) error {
-	return m.InsertConversationActivity(models.ActivityPriorityChange, conversationUUID, priority, actor)
-}
-
 // RecordStatusChange records an activity for a status change.
 func (m *Manager) RecordStatusChange(status, conversationUUID string, actor umodels.User) error {
 	return m.InsertConversationActivity(models.ActivityStatusChange, conversationUUID, status, actor)
-}
-
-// RecordSLASet records an activity for an SLA set.
-func (m *Manager) RecordSLASet(conversationUUID string, slaName string, actor umodels.User) error {
-	return m.InsertConversationActivity(models.ActivitySLASet, conversationUUID, slaName, actor)
-}
-
-// RecordTagAddition records an activity for a tag addition.
-func (m *Manager) RecordTagAddition(conversationUUID string, tag string, actor umodels.User) error {
-	return m.InsertConversationActivity(models.ActivityTagAdded, conversationUUID, tag, actor)
-}
-
-// RecordTagRemoval records an activity for a tag removal.
-func (m *Manager) RecordTagRemoval(conversationUUID string, tag string, actor umodels.User) error {
-	return m.InsertConversationActivity(models.ActivityTagRemoved, conversationUUID, tag, actor)
 }
 
 // InsertConversationActivity inserts an activity message.
@@ -810,10 +734,6 @@ func (m *Manager) getMessageActivityContent(activityType, newValue, actorName st
 		content = fmt.Sprintf("%s set priority to %s", actorName, newValue)
 	case models.ActivityStatusChange:
 		content = fmt.Sprintf("%s marked the conversation as %s", actorName, newValue)
-	case models.ActivityTagAdded:
-		content = fmt.Sprintf("%s added tag %s", actorName, newValue)
-	case models.ActivityTagRemoved:
-		content = fmt.Sprintf("%s removed tag %s", actorName, newValue)
 	case models.ActivitySLASet:
 		content = fmt.Sprintf("%s set %s SLA policy", actorName, newValue)
 	case models.ActivityParticipantAdded:
@@ -856,7 +776,7 @@ func (m *Manager) processIncomingMessage(ctx context.Context, in models.Incoming
 			Email:     in.Contact.Email,
 			Type:      umodels.UserTypeContact,
 		}
-		if err := m.userStore.ResolveContact(&user, umodels.ContactSync); err != nil {
+		if err := m.userStore.ResolveEmailSender(&user); err != nil {
 			m.lo.Error("error creating contact for incoming message", "message_source_id", in.SourceID.String, "error", err)
 			return models.Message{}, fmt.Errorf("creating contact: %w", err)
 		}
@@ -911,7 +831,6 @@ func (m *Manager) processIncomingMessage(ctx context.Context, in models.Incoming
 
 	// When a customer replies to a continuity emailsync the message to their live chat widget via WebSocket.
 	// No-op if the conversation's inbox isn't livechat.
-	m.broadcastMessageToWidgetClients(&msg)
 
 	// Process post-message hooks (automation rules, webhooks, SLA, etc.).
 	if err := m.ProcessIncomingMessageHooks(msg, isNewConversation); err != nil {
@@ -965,82 +884,7 @@ func (m *Manager) resolveByPlusAddress(in *models.IncomingMessage) (senderID, co
 		return senderID, conversationID, conversationUUID, nil
 	}
 
-	// Visitor upgrade requires email match - proves email ownership.
-	// If a different email replied, thread the message but don't upgrade.
-	if !strings.EqualFold(conversation.Contact.Email.String, in.Contact.Email.String) {
-		return 0, conversationID, conversationUUID, nil
-	}
-
-	user, contactErr := m.userStore.Get(0, in.Contact.Email.String, []string{umodels.UserTypeContact})
-	if contactErr == nil {
-		m.lo.Debug("a contact already exists with the same email as visitor; not upgrading visitor", "conversation_uuid", conversation.UUID, "contact_email", in.Contact.Email.String, "contact_user_id", user.ID)
-		// A contact with this email already exists; don't upgrade visitor.
-		// Let contact resolution find the correct sender ID.
-		return 0, conversationID, conversationUUID, nil
-	}
-
-	if envErr, ok := contactErr.(envelope.Error); !ok || envErr.ErrorType != envelope.NotFoundError {
-		return 0, 0, "", fmt.Errorf("fetching contact by email: %w", contactErr)
-	}
-
-	// Block upgrade if continuity email TTL expired.
-	if !m.isVisitorUpgradeSafe(conversation) {
-		return 0, conversationID, conversationUUID, nil
-	}
-
-	// Upgrade visitor as no contact exist with this email.
-	if err := m.userStore.UpgradeVisitorToContact(conversation.Contact.ID); err != nil {
-		return 0, 0, "", fmt.Errorf("upgrading visitor to contact: %w", err)
-	}
-
-	m.lo.Debug("upgraded visitor to contact", "conversation_uuid", conversation.UUID, "contact_id", conversation.Contact.ID)
-
-	// Notify conversation subscribers that the contact type has changed.
-	m.BroadcastContactUpdate(conversation.ContactID, map[string]any{"type": umodels.UserTypeContact})
-
-	return senderID, conversationID, conversationUUID, nil
-}
-
-// isVisitorUpgradeSafe checks whether a visitor-to-contact upgrade should proceed.
-// Blocks upgrade if the continuity email TTL has expired.
-func (m *Manager) isVisitorUpgradeSafe(conversation models.Conversation) bool {
-	if conversation.LastContinuityEmailSentAt.Valid {
-		if time.Since(conversation.LastContinuityEmailSentAt.Time) > upgradeWindowTTL {
-			m.lo.Info("visitor upgrade blocked: continuity email TTL expired",
-				"conversation_uuid", conversation.UUID,
-				"last_sent", conversation.LastContinuityEmailSentAt.Time,
-				"age", time.Since(conversation.LastContinuityEmailSentAt.Time).String(),
-				"max_ttl", upgradeWindowTTL.String())
-			return false
-		}
-	}
-	return true
-}
-
-// ProcessIncomingLiveChatMessage handles incoming live chat messages.
-func (m *Manager) ProcessIncomingLiveChatMessage(msg models.Message) (models.Message, error) {
-	// Upload message attachments.
-	if err := m.uploadMessageAttachments(&msg); err != nil {
-		return models.Message{}, fmt.Errorf("uploading message attachments: %w", err)
-	}
-
-	// Insert message.
-	if err := m.InsertMessage(&msg); err != nil {
-		return models.Message{}, err
-	}
-
-	// Advance contact_last_seen_at.
-	if err := m.UpdateConversationContactLastSeen(msg.ConversationUUID); err != nil {
-		m.lo.Error("error updating contact last seen after livechat message", "conversation_uuid", msg.ConversationUUID, "error", err)
-	}
-
-	// Process post-message hooks (automation rules, webhooks, SLA, etc.).
-	// isNewConversation = false since conversation always exists for live chat.
-	if err := m.ProcessIncomingMessageHooks(msg, false); err != nil {
-		m.lo.Error("error processing incoming message hooks", "conversation_uuid", msg.ConversationUUID, "error", err)
-	}
-
-	return msg, nil
+	return 0, conversationID, conversationUUID, nil
 }
 
 // MessageExists checks if a message with the given messageID exists.
@@ -1458,94 +1302,23 @@ func (m *Manager) ProcessIncomingMessageHooks(message models.Message, isNewConve
 		conversation, err := m.GetConversation(0, conversationUUID, "")
 		if err == nil {
 			m.webhookStore.TriggerEvent(wmodels.EventConversationCreated, conversation)
-			m.automation.EvaluateNewConversationRules(conversation)
 		}
 		return nil
 	}
 
-	// Snapshot before reopening so previous_* filters see the pre-reopen state.
-	var previousValues map[string]string
-	if preReopen, err := m.GetConversation(0, conversationUUID, ""); err == nil {
-		previousValues = amodels.PreviousValues(preReopen)
-	}
-
 	// Reopen conversation if it's not Open.
-	var reopened bool
+
 	systemUser, err := m.userStore.GetSystemUser()
 	if err != nil {
 		m.lo.Error("error fetching system user", "error", err)
 	} else {
 		var err error
-		if reopened, err = m.ReOpenConversation(conversationUUID, systemUser); err != nil {
+		if _, err = m.ReOpenConversation(conversationUUID, systemUser); err != nil {
 			m.lo.Error("error reopening conversation", "error", err)
 		}
 	}
 
-	// Create SLA event for next response if a SLA is applied and has next response time set, subsequent agent replies will mark this event as met.
-	// This cycle continues for next response time SLA metric.
-	conversation, err := m.GetConversation(0, conversationUUID, "")
-	if err != nil {
-		m.lo.Error("error fetching conversation for incoming message hooks", "conversation_uuid", conversationUUID, "error", err)
-	} else {
-		// Trigger automations on incoming message event.
-		m.automation.EvaluateConversationUpdateRules(conversation, amodels.EventConversationMessageIncoming, previousValues, umodels.User{ID: conversation.ContactID})
-
-		go m.NotifyNewReply(conversation, message, reopened)
-
-		// If assigned to an AI assistant, let it respond to this inbound customer message.
-		if m.aiAgent != nil && conversation.AssignedUserID.Valid {
-			m.aiAgent.HandleConversationEvent(conversation.ID, conversation.AssignedUserID.Int)
-		}
-
-		if conversation.SLAPolicyID.Int == 0 {
-			m.lo.Info("no SLA policy applied to conversation, skipping next response SLA event creation")
-			return nil
-		}
-		if deadline, err := m.slaStore.CreateNextResponseSLAEvent(conversation.ID, conversation.AppliedSLAID.Int, conversation.SLAPolicyID.Int, conversation.AssignedTeamID.Int); err != nil && !errors.Is(err, sla.ErrUnmetSLAEventAlreadyExists) {
-			m.lo.Error("error creating next response SLA event", "conversation_id", conversation.ID, "error", err)
-		} else if !deadline.IsZero() {
-			m.lo.Info("next response SLA event created for conversation", "conversation_id", conversation.ID, "deadline", deadline, "sla_policy_id", conversation.SLAPolicyID.Int)
-			m.BroadcastConversationUpdate(conversationUUID, map[string]any{
-				"next_response_deadline_at": deadline.Format(time.RFC3339),
-				"next_response_met_at":      nil,
-			})
-		}
-	}
 	return nil
-}
-
-// broadcastMessageToWidgetClients sends a message to widget clients if the conversation belongs to a livechat inbox.
-func (m *Manager) broadcastMessageToWidgetClients(message *models.Message) {
-	conversation, err := m.GetConversation(0, message.ConversationUUID, "")
-	if err != nil {
-		return
-	}
-
-	inboxInstance, err := m.inboxStore.Get(conversation.InboxID)
-	if err != nil {
-		return
-	}
-
-	liveChatInbox, ok := inboxInstance.(*livechat.LiveChat)
-	if !ok {
-		return
-	}
-
-	m.SignAttachmentURLs(message.Attachments)
-	m.SignAvatarURL(&message.Author.AvatarURL)
-	liveChatInbox.BroadcastMessageToClients(message.ConversationUUID, conversation.ContactID, models.ChatMessage{
-		Display:          resourcepolicy.PrepareContentWithAttachments(message.Content, message.ContentType, message.Attachments),
-		ContentType:      message.ContentType,
-		UUID:             message.UUID,
-		Status:           message.Status,
-		ConversationUUID: message.ConversationUUID,
-		CreatedAt:        message.CreatedAt,
-		Content:          message.Content,
-		TextContent:      message.TextContent,
-		Author:           message.Author,
-		Attachments:      message.Attachments,
-		Meta:             message.Meta,
-	})
 }
 
 // getMediaPreview returns a localized preview string based on attachment type.

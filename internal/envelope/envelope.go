@@ -76,13 +76,3 @@ func NewError(etype string, message string, data interface{}) error {
 	}
 	return err
 }
-
-// NewErrorWithCode creates and returns a new instance of Error with custom error metadata and an HTTP status code.
-func NewErrorWithCode(etype string, code int, message string, data interface{}) error {
-	return Error{
-		Message:   message,
-		ErrorType: etype,
-		Data:      data,
-		Code:      code,
-	}
-}

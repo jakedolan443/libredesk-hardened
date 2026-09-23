@@ -1,5 +1,5 @@
 <template>
-  <ConversationPlaceholder v-if="['inbox', 'team-inbox', 'view-inbox'].includes(route.name)" />
+  <ConversationPlaceholder v-if="['inbox', 'view-inbox'].includes(route.name)" />
   <router-view />
 </template>
 
@@ -13,7 +13,6 @@ import ConversationPlaceholder from '@/features/conversation/ConversationPlaceho
 
 const route = useRoute()
 const type = computed(() => route.params.type)
-const teamID = computed(() => route.params.teamID)
 const viewID = computed(() => route.params.viewID)
 
 const conversationStore = useConversationStore()
@@ -23,16 +22,16 @@ let lastFetchedKey = ''
 const storeHasCurrentList = () => {
   const c = conversationStore.conversations
   if (!c.initialized) return false
-  if (viewID.value) return c.listType === CONVERSATION_LIST_TYPE.VIEW && String(c.viewID) === String(viewID.value)
+  if (viewID.value)
+    return c.listType === CONVERSATION_LIST_TYPE.VIEW && String(c.viewID) === String(viewID.value)
   if (type.value) return c.listType === type.value
-  if (teamID.value) return c.listType === CONVERSATION_LIST_TYPE.TEAM_UNASSIGNED && String(c.teamID) === String(teamID.value)
   return false
 }
 
 const fetchForCurrentRoute = () => {
-  if (!type.value && !teamID.value && !viewID.value) return
+  if (!type.value && !viewID.value) return
 
-  const key = `${type.value || ''}|${teamID.value || ''}|${viewID.value || ''}`
+  const key = `${type.value || ''}|${viewID.value || ''}`
   if (key === lastFetchedKey) return
   lastFetchedKey = key
 
@@ -53,19 +52,14 @@ const fetchForCurrentRoute = () => {
   }
   if (type.value) {
     conversationStore.fetchConversationsList(true, type.value)
-  } else {
-    conversationStore.fetchConversationsList(true, CONVERSATION_LIST_TYPE.TEAM_UNASSIGNED, teamID.value)
   }
 }
 
 onMounted(fetchForCurrentRoute)
 
 const visibility = useDocumentVisibility()
-const { pause, resume } = useIntervalFn(
-  () => conversationStore.refreshConversationList(),
-  120000
-)
-watch(visibility, v => {
+const { pause, resume } = useIntervalFn(() => conversationStore.refreshConversationList(), 120000)
+watch(visibility, (v) => {
   if (v === 'visible') {
     conversationStore.refreshConversationList()
     resume()
@@ -74,5 +68,5 @@ watch(visibility, v => {
   }
 })
 
-watch([type, teamID, viewID], fetchForCurrentRoute)
+watch([type, viewID], fetchForCurrentRoute)
 </script>

@@ -270,7 +270,7 @@
   "admin.general.businessHours.placeholder": "Select business hours",
   "admin.general.faviconURL": "Favicon URL",
   "admin.general.faviconURL.valid": "Favicon URL should be a valid URL",
-  "admin.general.help": "These are your desk-wide defaults. Team-level settings will override these where configured.",
+  "admin.general.help": "Default settings for your mail workspace.",
   "admin.helpCenter.help": "Create public help centers where customers browse and search articles. Published articles can also be used by the AI agent to answer conversations.",
   "admin.helpCenter.treeHelp": "Group articles into collections. Drag a row by its handle to change the order readers see.",
   "admin.general.language.placeholder": "Select language",
@@ -1682,5 +1682,6 @@
   "conversation.sidebarCounts.assigned": "{count} open conversation in my inbox | {count} open conversations in my inbox",
   "conversation.sidebarCounts.mentioned": "{count} open conversation with mentions | {count} open conversations with mentions",
   "conversation.sidebarCounts.view": "{count} conversation in this view | {count} conversations in this view",
-  "conversation.sidebarCounts.unassigned": "{count} open unassigned conversation | {count} open unassigned conversations"
+  "conversation.sidebarCounts.unassigned": "{count} open unassigned conversation | {count} open unassigned conversations",
+  "globals.terms.correspondent": "Sender | Senders"
 }

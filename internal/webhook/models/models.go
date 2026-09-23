@@ -31,7 +31,6 @@ const (
 	// Conversation events
 	EventConversationCreated       WebhookEvent = "conversation.created"
 	EventConversationStatusChanged WebhookEvent = "conversation.status_changed"
-	EventConversationTagsChanged   WebhookEvent = "conversation.tags_changed"
 	EventConversationAssigned      WebhookEvent = "conversation.assigned"
 	EventConversationUnassigned    WebhookEvent = "conversation.unassigned"
 

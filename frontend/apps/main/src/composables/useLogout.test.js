@@ -1,23 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createLogout } from './useLogout'
-
-describe('createLogout', () => {
-  it('clears the push association before logging out', async () => {
-    const pushNotifications = { disable: vi.fn().mockResolvedValue() }
-    const browser = { location: { href: '' } }
-
-    await createLogout(pushNotifications, browser)()
-
-    expect(pushNotifications.disable).toHaveBeenCalled()
-    expect(browser.location.href).toBe('/logout')
-  })
-
-  it('logs out when clearing the push association fails', async () => {
-    const pushNotifications = { disable: vi.fn().mockRejectedValue(new Error('offline')) }
-    const browser = { location: { href: '' } }
-
-    await createLogout(pushNotifications, browser)()
-
-    expect(browser.location.href).toBe('/logout')
+describe('logout', () => {
+  it('navigates to the server logout route', () => {
+    const browser = { navigate: vi.fn() }
+    createLogout(browser)()
+    expect(browser.navigate).toHaveBeenCalledWith('/logout')
   })
 })

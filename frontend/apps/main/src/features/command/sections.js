@@ -6,7 +6,6 @@ export const SECTIONS = {
   ACTIONS: 'actions',
   CREATE: 'create',
   GOTO: 'goto',
-  ACCOUNT: 'account',
   CONTACT_RESULTS: 'contact-results',
   CONVERSATION_RESULTS: 'conversation-results'
 }
@@ -20,7 +19,6 @@ export const SECTION_ORDER = [
   SECTIONS.ACTIONS,
   SECTIONS.CREATE,
   SECTIONS.GOTO,
-  SECTIONS.ACCOUNT,
   SECTIONS.CONTACT_RESULTS,
   SECTIONS.CONVERSATION_RESULTS
 ]
@@ -28,13 +26,12 @@ export const SECTION_ORDER = [
 export const SECTION_LABEL_KEYS = {
   [SECTIONS.BULK]: 'command.section.selectedConversations',
   [SECTIONS.CONVERSATION]: 'globals.terms.conversation',
-  [SECTIONS.CONTACT]: 'globals.terms.contact',
+  [SECTIONS.CONTACT]: 'globals.terms.correspondent',
   [SECTIONS.LIST]: 'command.section.list',
   [SECTIONS.ACTIONS]: 'globals.terms.action',
   [SECTIONS.CREATE]: 'globals.messages.create',
   [SECTIONS.GOTO]: 'command.section.goTo',
-  [SECTIONS.ACCOUNT]: 'globals.terms.account',
-  [SECTIONS.CONTACT_RESULTS]: 'globals.terms.contact',
+  [SECTIONS.CONTACT_RESULTS]: 'globals.terms.correspondent',
   [SECTIONS.CONVERSATION_RESULTS]: 'globals.terms.conversation'
 }
 

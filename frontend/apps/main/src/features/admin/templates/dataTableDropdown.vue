@@ -11,7 +11,7 @@
         <Pencil class="mr-2 h-4 w-4" />
         {{ $t('globals.messages.edit') }}
       </DropdownMenuItem>
-      <template v-if="props.template.type !== 'email_notification'">
+      <template>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           @click="() => (alertOpen = true)"

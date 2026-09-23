@@ -3,7 +3,6 @@ import { useI18n } from 'vue-i18n'
 import { useConversationStore } from '@/stores/conversation'
 import { useEmitter } from '@/composables/useEmitter'
 import { EMITTER_EVENTS } from '@/constants/emitterEvents'
-import { TAG_ACTION } from '@/constants/conversation'
 import api from '@/api'
 
 const bulkLoading = ref(false)
@@ -38,21 +37,8 @@ export function useBulkActions() {
     }
   }
 
-  const bulkAssign = (assigneeType, assigneeValue) => {
-    if (assigneeValue === 'none') {
-      return runBulkAction((uuid) => api.removeAssignee(uuid, assigneeType))
-    }
-    const assigneeId = parseInt(assigneeValue, 10)
-    return runBulkAction((uuid) =>
-      api.updateAssignee(uuid, assigneeType, { assignee_id: assigneeId })
-    )
-  }
-
-  const bulkAddTag = (tag) =>
-    runBulkAction((uuid) => conversationStore.updateConversationTags(uuid, TAG_ACTION.ADD, [tag]))
-
   const bulkUpdateStatus = (status) =>
     runBulkAction((uuid) => api.updateConversationStatus(uuid, { status }))
 
-  return { bulkLoading, runBulkAction, bulkAssign, bulkAddTag, bulkUpdateStatus }
+  return { bulkLoading, runBulkAction, bulkUpdateStatus }
 }

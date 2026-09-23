@@ -17,14 +17,12 @@ export function useTextEditor({
   enableMentions = () => false,
   getConversationSuggestions = null,
   conversationReferencesEnabled = () => false,
-  onSend = () => {},
-  onToggleMessageType = null,
   onUpdate = () => {},
   onBlur = () => {},
   onOtherFiles = () => {}
 }) {
-  const prepare = (content) => restrictResources ? prepareEditorContent(content) : content
-  const serialize = (content) => restrictResources ? serializeEditorContent(content) : content
+  const prepare = (content) => (restrictResources ? prepareEditorContent(content) : content)
+  const serialize = (content) => (restrictResources ? serializeEditorContent(content) : content)
   const isInternalUpdate = ref(false)
 
   const { handlePaste, handleDrop, insertImages } = useInlineImageUpload({
@@ -63,28 +61,7 @@ export function useTextEditor({
       conversationReferencesEnabled,
       transformPastedHTML: prepare,
       handlePaste,
-      handleDrop,
-      handleKeyDown: (view, event) => {
-        if (event.ctrlKey && event.key.toLowerCase() === 'b') {
-          event.stopPropagation()
-          return false
-        }
-        if (event.ctrlKey && event.key === 'Enter') {
-          onSend()
-          return true
-        }
-        if (
-          onToggleMessageType &&
-          (event.ctrlKey || event.metaKey) &&
-          !event.shiftKey &&
-          !event.altKey &&
-          event.key.toLowerCase() === 'p'
-        ) {
-          event.preventDefault()
-          onToggleMessageType()
-          return true
-        }
-      }
+      handleDrop
     },
     onUpdate: ({ editor }) => {
       isInternalUpdate.value = true
@@ -99,7 +76,11 @@ export function useTextEditor({
   watch(
     htmlContent,
     (newContent) => {
-      if (!isInternalUpdate.value && editor.value && newContent !== serialize(editor.value.getHTML())) {
+      if (
+        !isInternalUpdate.value &&
+        editor.value &&
+        newContent !== serialize(editor.value.getHTML())
+      ) {
         editor.value.commands.setContent(prepare(newContent || ''), false)
         textContent.value = editor.value.getText()
       }

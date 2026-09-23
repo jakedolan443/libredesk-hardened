@@ -3,7 +3,7 @@ package main
 import (
 	amodels "github.com/abhinavxd/libredesk/internal/auth/models"
 	"github.com/abhinavxd/libredesk/internal/envelope"
-	realip "github.com/ferluci/fast-realip"
+
 	"github.com/valyala/fasthttp"
 	"github.com/zerodha/fastglue"
 )
@@ -16,8 +16,8 @@ type loginRequest struct {
 // handleLogin logs in the user and returns the user.
 func handleLogin(r *fastglue.Request) error {
 	var (
-		app      = r.Context.(*App)
-		ip       = realip.FromRequest(r.RequestCtx)
+		app = r.Context.(*App)
+
 		loginReq loginRequest
 	)
 
@@ -75,9 +75,6 @@ func handleLogin(r *fastglue.Request) error {
 	app.user.InvalidateAgentCache(user.ID)
 
 	// Insert activity log.
-	if err := app.activityLog.Login(user.ID, user.Email.String, ip); err != nil {
-		app.lo.Error("error creating login activity log", "error", err)
-	}
 
 	return r.SendEnvelope(user)
 }
@@ -85,15 +82,10 @@ func handleLogin(r *fastglue.Request) error {
 // handleLogout logs out the user and redirects to the dashboard.
 func handleLogout(r *fastglue.Request) error {
 	var (
-		app   = r.Context.(*App)
-		auser = r.RequestCtx.UserValue("user").(amodels.User)
-		ip    = realip.FromRequest(r.RequestCtx)
+		app = r.Context.(*App)
 	)
 
 	// Insert activity log.
-	if err := app.activityLog.Logout(auser.ID, auser.Email, ip); err != nil {
-		app.lo.Error("error creating logout activity log", "error", err)
-	}
 
 	if err := app.auth.DestroySession(r); err != nil {
 		app.lo.Error("error destroying session", "error", err)

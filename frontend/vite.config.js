@@ -9,129 +9,112 @@ import vue from '@vitejs/plugin-vue'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
-export default defineConfig(({ mode, command }) => {
-  const isWidget = mode === 'widget'
-  const appPath = isWidget ? 'apps/widget' : 'apps/main'
+export default defineConfig(() => {
+  const appPath = 'apps/main'
 
   const apiTarget = process.env.LD_API_TARGET || 'http://127.0.0.1:9000'
   const wsTarget = process.env.LD_WS_TARGET || 'ws://127.0.0.1:9000'
   const mainPort = process.env.LD_DEV_PORT ? Number(process.env.LD_DEV_PORT) : 8000
-  const widgetPort = process.env.LD_WIDGET_DEV_PORT ? Number(process.env.LD_WIDGET_DEV_PORT) : 8001
 
-  // Load shared tailwind config but scope content to current app only,
-  // so each app's CSS bundle doesn't include unused classes from the other.
+  // Include the mailbox application and shared components.
   const tailwindConfig = require('./tailwind.config.cjs')
-  const scopedContent = [
-    `./apps/${isWidget ? 'widget' : 'main'}/src/**/*.{js,ts,vue}`,
-    './shared-ui/**/*.{js,ts,vue}',
-  ]
+  const scopedContent = ['./apps/main/src/**/*.{js,ts,vue}', './shared-ui/**/*.{js,ts,vue}']
 
   return {
-    base: isWidget && command === 'build' ? '/widget/' : '/',
+    base: '/',
     css: {
       preprocessorOptions: {
         scss: {
-          api: 'modern',
-        },
+          api: 'modern'
+        }
       },
       postcss: {
-        plugins: [tailwind({ ...tailwindConfig, content: scopedContent }), autoprefixer()],
-      },
+        plugins: [tailwind({ ...tailwindConfig, content: scopedContent }), autoprefixer()]
+      }
     },
     root: path.resolve(__dirname, appPath),
     publicDir: path.resolve(__dirname, 'public'),
-    // Separate cache per app to avoid stale/conflicting caches.
-    cacheDir: path.resolve(__dirname, `node_modules/.vite-${isWidget ? 'widget' : 'main'}`),
+    // Keep the Vite cache with the frontend dependencies.
+    cacheDir: path.resolve(__dirname, 'node_modules/.vite-main'),
     server: {
-      cors: { origin: "*" },
-      // Allow access to parent dir so shared-ui imports work in dev, plus the
-      // public stylesheet the article editor shares with the rendered page.
+      cors: { origin: '*' },
+      // Allow shared-ui imports in development.
       fs: {
-        allow: [path.resolve(__dirname), path.resolve(__dirname, '../static/public/static')],
+        allow: [path.resolve(__dirname)]
       },
-      port: isWidget ? widgetPort : mainPort,
+      port: mainPort,
       proxy: {
         '/api': {
           target: apiTarget,
-          changeOrigin: true,
+          changeOrigin: true
         },
-        '/widget.js': {
-          target: apiTarget,
-          changeOrigin: true,
-        },
+
         '/static': {
           target: apiTarget,
-          changeOrigin: true,
+          changeOrigin: true
         },
         '/logout': {
           target: apiTarget,
-          changeOrigin: true,
+          changeOrigin: true
         },
         '/uploads': {
           target: apiTarget,
-          changeOrigin: true,
+          changeOrigin: true
         },
         '/ws': {
           target: wsTarget,
           ws: true,
-          changeOrigin: true,
-        },
-        '/widget/ws': {
-          target: wsTarget,
-          ws: true,
-          changeOrigin: true,
+          changeOrigin: true
         }
-      },
+      }
     },
     build: {
-      outDir: isWidget
-        ? path.resolve(__dirname, 'dist/widget')
-        : path.resolve(__dirname, 'dist/main'),
+      outDir: path.resolve(__dirname, 'dist/main'),
       emptyOutDir: true,
       chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
           manualChunks: {
             'vue-vendor': ['vue', 'vue-router', 'pinia'],
-            'radix': ['radix-vue', 'reka-ui'],
-            'icons': ['lucide-vue-next', '@radix-icons/vue'],
-            'utils': ['@vueuse/core', 'clsx', 'tailwind-merge', 'class-variance-authority'],
-            'forms': ['vee-validate', '@vee-validate/zod', 'zod'],
-            'misc': ['axios', 'date-fns', 'mitt', 'qs', 'vue-i18n'],
-            // Main-app-only chunks - widget doesn't use these libraries.
-            ...(!isWidget && {
-              'charts': ['@unovis/ts', '@unovis/vue'],
-              'editor': [
-                '@tiptap/vue-3',
-                '@tiptap/starter-kit',
-                '@tiptap/extension-image',
-                '@tiptap/extension-link',
-                '@tiptap/extension-placeholder',
-                '@tiptap/extension-table',
-                '@tiptap/extension-table-cell',
-                '@tiptap/extension-table-header',
-                '@tiptap/extension-table-row',
-              ],
-              'codemirror': ['codemirror', '@codemirror/lang-html', '@codemirror/lang-javascript', '@codemirror/theme-one-dark'],
-              'table': ['@tanstack/vue-table'],
-            }),
-          },
-        },
-      },
+            radix: ['radix-vue', 'reka-ui'],
+            icons: ['lucide-vue-next', '@radix-icons/vue'],
+            utils: ['@vueuse/core', 'clsx', 'tailwind-merge', 'class-variance-authority'],
+            forms: ['vee-validate', '@vee-validate/zod', 'zod'],
+            misc: ['axios', 'date-fns', 'mitt', 'qs', 'vue-i18n'],
+            // Mail editor and settings chunks.
+            editor: [
+              '@tiptap/vue-3',
+              '@tiptap/starter-kit',
+              '@tiptap/extension-image',
+              '@tiptap/extension-link',
+              '@tiptap/extension-placeholder',
+              '@tiptap/extension-table',
+              '@tiptap/extension-table-cell',
+              '@tiptap/extension-table-header',
+              '@tiptap/extension-table-row'
+            ],
+            codemirror: [
+              'codemirror',
+              '@codemirror/lang-html',
+              '@codemirror/lang-javascript',
+              '@codemirror/theme-one-dark'
+            ],
+            table: ['@tanstack/vue-table']
+          }
+        }
+      }
     },
     plugins: [vue()],
-    // `root` is the app dir, which would hide the tests living in the other app and in shared-ui.
+    // Include shared-ui tests outside the application root.
     test: {
-      dir: path.resolve(__dirname),
+      dir: path.resolve(__dirname)
     },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, `${appPath}/src`),
         '@main': path.resolve(__dirname, 'apps/main/src'),
-        '@widget': path.resolve(__dirname, 'apps/widget/src'),
-        '@shared-ui': path.resolve(__dirname, 'shared-ui'),
-        '@public-static': path.resolve(__dirname, '../static/public/static'),
-      },
-    },
+        '@shared-ui': path.resolve(__dirname, 'shared-ui')
+      }
+    }
   }
 })

@@ -10,7 +10,7 @@ import (
 	"github.com/abhinavxd/libredesk/internal/envelope"
 	"github.com/abhinavxd/libredesk/internal/stringutil"
 	"github.com/abhinavxd/libredesk/internal/user/models"
-	realip "github.com/ferluci/fast-realip"
+
 	"github.com/valyala/fasthttp"
 	"github.com/zerodha/fastglue"
 )
@@ -75,7 +75,6 @@ func handleOIDCCallback(r *fastglue.Request) error {
 		code            = string(r.RequestCtx.QueryArgs().Peek("code"))
 		state           = string(r.RequestCtx.QueryArgs().Peek("state"))
 		providerID, err = strconv.Atoi(r.RequestCtx.UserValue("id").(string))
-		ip              = realip.FromRequest(r.RequestCtx)
 	)
 	next, _ := app.auth.GetSessionValue(r, oidcNextSessKey)
 	nextStr, _ := next.(string)
@@ -155,9 +154,6 @@ func handleOIDCCallback(r *fastglue.Request) error {
 	app.user.InvalidateAgentCache(user.ID)
 
 	// Insert activity log.
-	if err := app.activityLog.Login(user.ID, user.Email.String, ip); err != nil {
-		app.lo.Error("error creating login activity log", "error", err)
-	}
 
 	app.lo.Info("oidc login successful", "provider_id", providerID, "user_id", user.ID, "email", user.Email.String)
 

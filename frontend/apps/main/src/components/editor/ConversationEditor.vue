@@ -10,12 +10,7 @@
       :should-show="shouldShowBubble"
       class="bg-background p-1 box will-change-transform"
     >
-      <EditorToolbar
-        :editor="editor"
-        show-ai
-        @open-link="linkDialog?.open()"
-        @ai-generation-change="emit('aiGenerationChange', $event)"
-      />
+      <EditorToolbar :editor="editor" @open-link="linkDialog?.open()" />
     </BubbleMenu>
     <EditorContent :editor="editor" class="native-html min-h-0 flex-1 overflow-y-auto" />
 
@@ -50,13 +45,7 @@ const props = defineProps({
   linkedModel: { type: String, default: 'messages' }
 })
 
-const emit = defineEmits([
-  'send',
-  'aiGenerationChange',
-  'mentionsChanged',
-  'filesDropped',
-  'toggleMessageType'
-])
+const emit = defineEmits(['send', 'mentionsChanged', 'filesDropped', 'toggleMessageType'])
 
 const linkDialog = ref(null)
 

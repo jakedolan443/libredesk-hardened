@@ -33,55 +33,6 @@ const routes = [
     component: () => import('@main/App.vue'),
     children: [
       {
-        path: 'contacts',
-        name: 'contacts',
-        component: () => import('@main/views/contact/ContactsView.vue'),
-        meta: { titleKey: 'contact.allContacts' }
-      },
-      {
-        path: 'contacts/:id',
-        name: 'contact-detail',
-        component: () => import('@main/views/contact/ContactDetailView.vue'),
-        meta: { titleKey: 'globals.terms.contact', titleCount: 2 }
-      },
-      {
-        path: '/reports',
-        name: 'reports',
-        redirect: '/reports/overview',
-        children: [
-          {
-            path: 'overview',
-            name: 'overview',
-            component: () => import('@main/views/reports/OverviewView.vue'),
-            meta: { titleKey: 'globals.terms.overview' }
-          }
-        ]
-      },
-      {
-        path: '/inboxes/teams/:teamID',
-        name: 'teams',
-        props: true,
-        component: () => import('@main/layouts/inbox/InboxLayout.vue'),
-        meta: { titleKey: 'globals.terms.teamInbox', hidePageHeader: true },
-        children: [
-          {
-            path: '',
-            name: 'team-inbox',
-            component: () => import('@main/views/inbox/InboxView.vue'),
-            meta: { titleKey: 'globals.terms.teamInbox' },
-            children: [
-              {
-                path: 'conversation/:uuid',
-                name: 'team-inbox-conversation',
-                component: () => import('@main/views/conversation/ConversationDetailView.vue'),
-                props: true,
-                meta: { titleKey: 'globals.terms.teamInbox', hidePageHeader: true }
-              }
-            ]
-          }
-        ]
-      },
-      {
         path: '/inboxes/views/:viewID',
         name: 'views',
         props: true,
@@ -112,9 +63,9 @@ const routes = [
         meta: { titleKey: 'globals.terms.search', hidePageHeader: true }
       },
       {
-        path: '/inboxes/:type(assigned|unassigned|all|mentioned)?',
+        path: '/inboxes/:type(all|mentioned)?',
         name: 'inboxes',
-        redirect: '/inboxes/assigned',
+        redirect: '/inboxes/all',
         component: () => import('@main/layouts/inbox/InboxLayout.vue'),
         props: true,
         meta: { titleKey: 'globals.terms.inbox', hidePageHeader: true },
@@ -126,9 +77,7 @@ const routes = [
             meta: {
               titleKey: 'globals.terms.inbox',
               typeKey: (route) => {
-                if (route.params.type === 'assigned') return 'conversation.myInbox'
                 if (route.params.type === 'mentioned') return 'conversation.mentions'
-                if (route.params.type === 'unassigned') return 'globals.terms.unassigned'
                 if (route.params.type === 'all') return 'globals.messages.all'
                 return ''
               }
@@ -142,9 +91,7 @@ const routes = [
                 meta: {
                   titleKey: 'globals.terms.inbox',
                   typeKey: (route) => {
-                    if (route.params.type === 'assigned') return 'conversation.myInbox'
                     if (route.params.type === 'mentioned') return 'conversation.mentions'
-                    if (route.params.type === 'unassigned') return 'globals.terms.unassigned'
                     if (route.params.type === 'all') return 'globals.messages.all'
                     return ''
                   },
@@ -155,41 +102,13 @@ const routes = [
           }
         ]
       },
-      {
-        path: '/account/:page?',
-        name: 'account',
-        redirect: '/account/profile',
-        component: () => import('@main/layouts/account/AccountLayout.vue'),
-        props: true,
-        meta: { titleKey: 'globals.terms.account' },
-        children: [
-          {
-            path: 'profile',
-            name: 'profile',
-            component: () => import('@main/views/account/profile/ProfileEditView.vue'),
-            meta: { titleKey: 'account.editProfile' }
-          },
-          {
-            path: 'notifications',
-            name: 'account-notifications',
-            component: () =>
-              import('@main/views/account/notifications/NotificationPreferences.vue'),
-            meta: { titleKey: 'globals.terms.notification', titleCount: 2 }
-          }
-        ]
-      },
+
       {
         path: '/admin',
         name: 'admin',
         component: () => import('@main/layouts/admin/AdminLayout.vue'),
         meta: { titleKey: 'globals.terms.admin' },
         children: [
-          {
-            path: 'custom-attributes',
-            name: 'custom-attributes',
-            component: () => import('@main/views/admin/custom-attributes/CustomAttributes.vue'),
-            meta: { titleKey: 'globals.terms.customAttribute', titleCount: 2 }
-          },
           {
             path: 'general',
             name: 'general',
@@ -202,150 +121,7 @@ const routes = [
             component: () => import('@main/views/admin/resources/ResourceMonitor.vue'),
             meta: { titleKey: 'admin.systemResources.title' }
           },
-          {
-            path: 'ai',
-            redirect: { name: 'ai-providers' }
-          },
-          {
-            path: 'help-center',
-            component: () => import('@main/views/admin/help-center/HelpCenter.vue'),
-            meta: { titleKey: 'globals.terms.helpCenter' },
-            children: [
-              {
-                path: '',
-                name: 'help-center-list',
-                component: () => import('@main/views/admin/help-center/HelpCenterList.vue')
-              },
-              {
-                path: ':id/customize',
-                name: 'help-center-customize',
-                props: true,
-                component: () => import('@main/views/admin/help-center/HelpCenterCustomize.vue'),
-                meta: { titleKey: 'globals.terms.helpCenter' }
-              },
-              {
-                path: ':id/tree/:locale?',
-                name: 'help-center-tree',
-                props: true,
-                component: () => import('@main/views/admin/help-center/HelpCenterTree.vue'),
-                meta: { titleKey: 'globals.terms.helpCenter' }
-              }
-            ]
-          },
-          {
-            path: 'ai/providers',
-            name: 'ai-providers',
-            component: () => import('@main/views/admin/ai/AIProviders.vue'),
-            meta: { titleKey: 'globals.terms.provider', titleCount: 2 }
-          },
-          {
-            path: 'ai/snippets',
-            name: 'ai-snippets',
-            component: () => import('@main/views/admin/ai/AISnippets.vue'),
-            meta: { titleKey: 'admin.ai.snippets', titleCount: 2 }
-          },
-          {
-            path: 'ai/editor-prompts',
-            name: 'ai-editor-prompts',
-            component: () => import('@main/views/admin/ai/AIEditorPrompts.vue'),
-            meta: { titleKey: 'admin.ai.editorPrompts', titleCount: 2 }
-          },
-          {
-            path: 'ai/suggestions',
-            name: 'ai-suggestions',
-            component: () => import('@main/views/admin/ai/AISuggestions.vue'),
-            meta: { titleKey: 'admin.ai.suggestions' }
-          },
-          {
-            path: 'ai/tools',
-            name: 'ai-tools',
-            component: () => import('@main/views/admin/ai/AITools.vue'),
-            meta: { titleKey: 'admin.ai.tools' }
-          },
-          {
-            path: 'ai/assistants',
-            name: 'ai-assistants',
-            component: () => import('@main/views/admin/ai/AIAssistants.vue'),
-            meta: { titleKey: 'admin.ai.assistants' }
-          },
-          {
-            path: 'ai/tools/new',
-            name: 'new-ai-tool',
-            component: () => import('@main/views/admin/ai/CreateOrEditTool.vue'),
-            meta: { titleKey: 'admin.ai.tool.new' }
-          },
-          {
-            path: 'ai/tools/:id/edit',
-            name: 'edit-ai-tool',
-            props: true,
-            component: () => import('@main/views/admin/ai/CreateOrEditTool.vue'),
-            meta: { titleKey: 'admin.ai.tool.edit' }
-          },
-          {
-            path: 'ai/assistants/new',
-            name: 'new-ai-assistant',
-            component: () => import('@main/views/admin/ai/CreateOrEditAssistant.vue'),
-            meta: { titleKey: 'admin.ai.assistant.new' }
-          },
-          {
-            path: 'ai/assistants/:id/edit',
-            name: 'edit-ai-assistant',
-            props: true,
-            component: () => import('@main/views/admin/ai/CreateOrEditAssistant.vue'),
-            meta: { titleKey: 'admin.ai.assistant.edit' }
-          },
-          {
-            path: 'business-hours',
-            component: () => import('@main/views/admin/business-hours/BusinessHours.vue'),
-            meta: { titleKey: 'globals.terms.businessHour', titleCount: 2 },
-            children: [
-              {
-                path: '',
-                name: 'business-hours-list',
-                component: () => import('@main/views/admin/business-hours/BusinessHoursList.vue')
-              },
-              {
-                path: 'new',
-                name: 'new-business-hours',
-                component: () =>
-                  import('@main/views/admin/business-hours/CreateOrEditBusinessHours.vue'),
-                meta: { titleKey: 'businessHour.new' }
-              },
-              {
-                path: ':id/edit',
-                name: 'edit-business-hours',
-                props: true,
-                component: () =>
-                  import('@main/views/admin/business-hours/CreateOrEditBusinessHours.vue'),
-                meta: { titleKey: 'businessHour.edit' }
-              }
-            ]
-          },
-          {
-            path: 'sla',
-            component: () => import('@main/views/admin/sla/SLA.vue'),
-            meta: { titleKey: 'globals.terms.sla' },
-            children: [
-              {
-                path: '',
-                name: 'sla-list',
-                component: () => import('@main/views/admin/sla/SLAList.vue')
-              },
-              {
-                path: 'new',
-                name: 'new-sla',
-                component: () => import('@main/views/admin/sla/CreateEditSLA.vue'),
-                meta: { titleKey: 'sla.new' }
-              },
-              {
-                path: ':id/edit',
-                props: true,
-                name: 'edit-sla',
-                component: () => import('@main/views/admin/sla/CreateEditSLA.vue'),
-                meta: { titleKey: 'sla.edit' }
-              }
-            ]
-          },
+
           {
             path: 'inboxes',
             component: () => import('@main/views/admin/inbox/InboxView.vue'),
@@ -371,124 +147,7 @@ const routes = [
               }
             ]
           },
-          {
-            path: 'notification',
-            component: () => import('@main/features/admin/notification/NotificationSetting.vue'),
-            meta: { titleKey: 'globals.terms.notification', titleCount: 2 }
-          },
-          {
-            path: 'teams',
-            meta: { titleKey: 'globals.terms.team', titleCount: 2 },
-            children: [
-              {
-                path: 'agents',
-                component: () => import('@main/views/admin/agents/Agents.vue'),
-                meta: { titleKey: 'globals.terms.agent', titleCount: 2 },
-                children: [
-                  {
-                    path: '',
-                    name: 'agent-list',
-                    component: () => import('@main/views/admin/agents/AgentList.vue')
-                  },
-                  {
-                    path: 'new',
-                    name: 'new-agent',
-                    component: () => import('@main/views/admin/agents/CreateAgent.vue'),
-                    meta: { titleKey: 'agent.new' }
-                  },
-                  {
-                    path: ':id/edit',
-                    props: true,
-                    name: 'edit-agent',
-                    component: () => import('@main/views/admin/agents/EditAgent.vue'),
-                    meta: { titleKey: 'agent.edit' }
-                  }
-                ]
-              },
-              {
-                path: 'teams',
-                component: () => import('@main/views/admin/teams/Teams.vue'),
-                meta: { titleKey: 'globals.terms.team', titleCount: 2 },
-                children: [
-                  {
-                    path: '',
-                    name: 'team-list',
-                    component: () => import('@main/views/admin/teams/TeamList.vue')
-                  },
-                  {
-                    path: 'new',
-                    name: 'new-team',
-                    component: () => import('@main/views/admin/teams/CreateTeamForm.vue'),
-                    meta: { titleKey: 'team.new' }
-                  },
-                  {
-                    path: ':id/edit',
-                    props: true,
-                    name: 'edit-team',
-                    component: () => import('@main/views/admin/teams/EditTeamForm.vue'),
-                    meta: { titleKey: 'team.edit' }
-                  }
-                ]
-              },
-              {
-                path: 'roles',
-                component: () => import('@main/views/admin/roles/Roles.vue'),
-                meta: { titleKey: 'globals.terms.role', titleCount: 2 },
-                children: [
-                  {
-                    path: '',
-                    name: 'role-list',
-                    component: () => import('@main/views/admin/roles/RoleList.vue')
-                  },
-                  {
-                    path: 'new',
-                    name: 'new-role',
-                    component: () => import('@main/views/admin/roles/NewRole.vue'),
-                    meta: { titleKey: 'role.new' }
-                  },
-                  {
-                    path: ':id/edit',
-                    props: true,
-                    name: 'edit-role',
-                    component: () => import('@main/views/admin/roles/EditRole.vue'),
-                    meta: { titleKey: 'role.edit' }
-                  }
-                ]
-              },
-              {
-                path: 'activity-log',
-                name: 'activity-log',
-                component: () => import('@main/views/admin/activity-log/ActivityLog.vue'),
-                meta: { titleKey: 'globals.terms.activityLog', titleCount: 2 }
-              }
-            ]
-          },
-          {
-            path: 'automations',
-            component: () => import('@main/views/admin/automations/Automation.vue'),
-            meta: { titleKey: 'globals.terms.automation', titleCount: 2 },
-            children: [
-              {
-                path: '',
-                name: 'automation-list',
-                component: () => import('@main/views/admin/automations/AutomationList.vue')
-              },
-              {
-                path: 'new',
-                props: true,
-                name: 'new-automation',
-                component: () => import('@main/views/admin/automations/CreateOrEditRule.vue'),
-                meta: { titleKey: 'automation.newRule' }
-              },
-              {
-                path: ':id/edit',
-                props: true,
-                name: 'edit-automation',
-                component: () => import('@main/views/admin/automations/CreateOrEditRule.vue'),
-                meta: { titleKey: 'automation.editRule' }
-              }
-            ]
-          },
+
           {
             path: 'templates',
             component: () => import('@main/views/admin/templates/Templates.vue'),
@@ -567,73 +226,17 @@ const routes = [
               }
             ]
           },
-          {
-            path: 'context-links',
-            component: () => import('@main/views/admin/context-links/ContextLinks.vue'),
-            name: 'context-links',
-            meta: { titleKey: 'globals.terms.contextLink', titleCount: 2 },
-            children: [
-              {
-                path: '',
-                name: 'context-link-list',
-                component: () => import('@main/views/admin/context-links/ContextLinkList.vue')
-              },
-              {
-                path: ':id/edit',
-                props: true,
-                name: 'edit-context-link',
-                component: () =>
-                  import('@main/views/admin/context-links/CreateEditContextLink.vue'),
-                meta: { titleKey: 'contextLink.edit' }
-              },
-              {
-                path: 'new',
-                name: 'new-context-link',
-                component: () =>
-                  import('@main/views/admin/context-links/CreateEditContextLink.vue'),
-                meta: { titleKey: 'contextLink.new' }
-              }
-            ]
-          },
+
           {
             path: 'conversations',
             meta: { titleKey: 'globals.terms.conversation', titleCount: 2 },
             children: [
               {
-                path: 'tags',
-                component: () => import('@main/views/admin/tags/TagsView.vue'),
-                meta: { titleKey: 'globals.terms.tag', titleCount: 2 }
-              },
-              {
                 path: 'statuses',
                 component: () => import('@main/views/admin/status/StatusView.vue'),
                 meta: { titleKey: 'globals.terms.status', titleCount: 2 }
               },
-              {
-                path: 'macros',
-                component: () => import('@main/views/admin/macros/Macros.vue'),
-                meta: { titleKey: 'globals.terms.macro', titleCount: 2 },
-                children: [
-                  {
-                    path: '',
-                    name: 'macro-list',
-                    component: () => import('@main/views/admin/macros/MacroList.vue')
-                  },
-                  {
-                    path: 'new',
-                    name: 'new-macro',
-                    component: () => import('@main/views/admin/macros/CreateMacro.vue'),
-                    meta: { titleKey: 'macro.new' }
-                  },
-                  {
-                    path: ':id/edit',
-                    props: true,
-                    name: 'edit-macro',
-                    component: () => import('@main/views/admin/macros/EditMacro.vue'),
-                    meta: { titleKey: 'macro.editMacro' }
-                  }
-                ]
-              },
+
               {
                 path: 'shared-views',
                 component: () => import('@main/views/admin/shared-views/SharedViews.vue'),
@@ -668,7 +271,7 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     redirect: () => {
-      return '/inboxes/assigned'
+      return '/inboxes/all'
     }
   }
 ]

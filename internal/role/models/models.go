@@ -11,11 +11,6 @@ const (
 	RoleAgent = "Agent"
 )
 
-var DefaultRoles = []string{
-	RoleAdmin,
-	RoleAgent,
-}
-
 type Role struct {
 	ID          int            `db:"id" json:"id"`
 	CreatedAt   time.Time      `db:"created_at" json:"created_at"`

@@ -38,22 +38,6 @@ FROM
 WHERE
     id = $1;
 
--- name: get-active-webhooks
-SELECT
-    id,
-    created_at,
-    updated_at,
-    name,
-    url,
-    events,
-    secret,
-    is_active
-FROM
-    webhooks
-WHERE
-    is_active = true
-ORDER BY created_at DESC;
-
 -- name: get-webhooks-by-event
 SELECT
     id,

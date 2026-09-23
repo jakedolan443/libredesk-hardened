@@ -43,7 +43,9 @@ const from = computed(() => {
   if (explicitFrom.length) return explicitFrom
 
   if (props.message.type === 'incoming') {
-    return [props.message.author?.email, currentConversation.value.contact?.email].filter(Boolean)
+    return [props.message.author?.email, currentConversation.value.correspondent?.email].filter(
+      Boolean
+    )
   }
 
   return [currentConversation.value.inbox_mail || currentConversation.value.inbox_reply_to].filter(
@@ -56,12 +58,12 @@ const to = computed(() => {
   if (explicitTo.length) return explicitTo
 
   if (props.message.type === 'incoming') {
-    return [currentConversation.value.inbox_mail || currentConversation.value.inbox_reply_to].filter(
-      Boolean
-    )
+    return [
+      currentConversation.value.inbox_mail || currentConversation.value.inbox_reply_to
+    ].filter(Boolean)
   }
 
-  return [currentConversation.value.contact?.email].filter(Boolean)
+  return [currentConversation.value.correspondent?.email].filter(Boolean)
 })
 
 const cc = computed(() => asList(meta.value.cc))

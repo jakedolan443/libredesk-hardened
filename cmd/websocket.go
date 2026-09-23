@@ -45,17 +45,6 @@ var agentUpgrader = websocket.FastHTTPUpgrader{
 	Error: ErrHandler,
 }
 
-// widgetUpgrader: cross-origin by design.
-var widgetUpgrader = websocket.FastHTTPUpgrader{
-	ReadBufferSize:  8192,
-	WriteBufferSize: 8192,
-	WriteBufferPool: wsWriteBufferPool,
-	CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
-		return true
-	},
-	Error: ErrHandler,
-}
-
 // ErrHandler writes the handshake failure response.
 func ErrHandler(ctx *fasthttp.RequestCtx, status int, reason error) {
 	ctx.Error(reason.Error(), status)

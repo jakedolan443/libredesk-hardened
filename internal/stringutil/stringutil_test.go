@@ -2,7 +2,6 @@ package stringutil
 
 import (
 	"testing"
-	"time"
 )
 
 func TestRemoveItemByValue(t *testing.T) {
@@ -48,55 +47,6 @@ func TestRemoveItemByValue(t *testing.T) {
 				if result[i] != tt.expected[i] {
 					t.Errorf("at index %d got %s, want %s", i, result[i], tt.expected[i])
 				}
-			}
-		})
-	}
-}
-
-func TestFormatDuration(t *testing.T) {
-	tests := []struct {
-		name           string
-		duration       time.Duration
-		includeSeconds bool
-		expected       string
-	}{
-		{
-			name:           "zero duration with seconds",
-			duration:       0,
-			includeSeconds: true,
-			expected:       "0 minutes",
-		},
-		{
-			name:           "hours only",
-			duration:       2 * time.Hour,
-			includeSeconds: false,
-			expected:       "2 hours 0 minutes",
-		},
-		{
-			name:           "hours and minutes",
-			duration:       2*time.Hour + 30*time.Minute,
-			includeSeconds: false,
-			expected:       "2 hours 30 minutes",
-		},
-		{
-			name:           "full duration with seconds",
-			duration:       2*time.Hour + 30*time.Minute + 15*time.Second,
-			includeSeconds: true,
-			expected:       "2 hours 30 minutes 15 seconds",
-		},
-		{
-			name:           "full duration without seconds",
-			duration:       2*time.Hour + 30*time.Minute + 15*time.Second,
-			includeSeconds: false,
-			expected:       "2 hours 30 minutes",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := FormatDuration(tt.duration, tt.includeSeconds)
-			if result != tt.expected {
-				t.Errorf("got %q, want %q", result, tt.expected)
 			}
 		})
 	}
@@ -170,64 +120,6 @@ func TestExtractConvUUID(t *testing.T) {
 			result := ExtractConvUUID(tt.email)
 			if result != tt.expected {
 				t.Errorf("ExtractConvUUID(%q) = %q, want %q", tt.email, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestExtractReferenceNumber(t *testing.T) {
-	tests := []struct {
-		name     string
-		subject  string
-		expected string
-	}{
-		{
-			name:     "simple reference number",
-			subject:  "Test - #392",
-			expected: "392",
-		},
-		{
-			name:     "with RE prefix",
-			subject:  "RE: Test - #392",
-			expected: "392",
-		},
-		{
-			name:     "multiple hashes picks last",
-			subject:  "Order #123 - #392",
-			expected: "392",
-		},
-		{
-			name:     "no reference number",
-			subject:  "Just a regular subject",
-			expected: "",
-		},
-		{
-			name:     "hash without number",
-			subject:  "Test #abc",
-			expected: "",
-		},
-		{
-			name:     "empty string",
-			subject:  "",
-			expected: "",
-		},
-		{
-			name:     "number without hash",
-			subject:  "Test 392",
-			expected: "",
-		},
-		{
-			name:     "multiple RE prefixes",
-			subject:  "RE: RE: Test - #100",
-			expected: "100",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ExtractReferenceNumber(tt.subject)
-			if result != tt.expected {
-				t.Errorf("ExtractReferenceNumber(%q) = %q, want %q", tt.subject, result, tt.expected)
 			}
 		})
 	}
@@ -326,149 +218,6 @@ func TestSplitName(t *testing.T) {
 			first, last := SplitName(tt.input)
 			if first != tt.wantFirst || last != tt.wantLast {
 				t.Errorf("SplitName(%q) = (%q, %q), want (%q, %q)", tt.input, first, last, tt.wantFirst, tt.wantLast)
-			}
-		})
-	}
-}
-func TestGenerateSlug(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "simple title",
-			input:    "Hello World",
-			expected: "hello-world",
-		},
-		{
-			name:     "title with special characters",
-			input:    "Hello, World! How are you?",
-			expected: "hello-world-how-are-you",
-		},
-		{
-			name:     "title with numbers",
-			input:    "Article 123: How to Code",
-			expected: "article-123-how-to-code",
-		},
-		{
-			name:     "title with underscores",
-			input:    "test_article_name",
-			expected: "test_article_name",
-		},
-		{
-			name:     "title with multiple spaces",
-			input:    "Hello     World",
-			expected: "hello-world",
-		},
-		{
-			name:     "title with leading/trailing spaces",
-			input:    "  Hello World  ",
-			expected: "hello-world",
-		},
-		{
-			name:     "title with multiple hyphens",
-			input:    "Hello---World",
-			expected: "hello-world",
-		},
-		{
-			name:     "unicode characters",
-			input:    "Hello World",
-			expected: "hello-world",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := GenerateSlug(tt.input)
-			if result != tt.expected {
-				t.Errorf("GenerateSlug(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestHTML2TextMarkdownLinks(t *testing.T) {
-	tests := []struct {
-		name string
-		html string
-		want string
-	}{
-		{
-			name: "link with distinct text becomes a markdown link",
-			html: `<p>See <a href="https://example.com/guide">the guide</a> for steps.</p>`,
-			want: "See [the guide](https://example.com/guide) for steps.",
-		},
-		{
-			name: "link text equal to url not duplicated",
-			html: `<p><a href="https://example.com">https://example.com</a></p>`,
-			want: "https://example.com",
-		},
-		{
-			name: "plain text unchanged",
-			html: `<p>No links here.</p>`,
-			want: "No links here.",
-		},
-		{
-			name: "nested markup inside the anchor flattens to link text",
-			html: `<p><a href="https://example.com/x"><strong>Pay</strong> now</a></p>`,
-			want: "[Pay now](https://example.com/x)",
-		},
-		{
-			name: "brackets in link text are escaped",
-			html: `<p><a href="https://example.com">Docs [beta]</a></p>`,
-			want: `[Docs \[beta\]](https://example.com)`,
-		},
-		{
-			name: "url with parentheses is wrapped in angle brackets",
-			html: `<p><a href="https://example.com/a(b)">See</a></p>`,
-			want: "[See](<https://example.com/a(b)>)",
-		},
-		{
-			name: "mailto link becomes markdown",
-			html: `<p>Mail <a href="mailto:billing@example.com">billing</a>.</p>`,
-			want: "Mail [billing](mailto:billing@example.com).",
-		},
-		{
-			name: "linked image becomes bare url",
-			html: `<a href="https://x.io"><img src="cid:1" alt="Banner"></a>`,
-			want: "https://x.io",
-		},
-		{
-			name: "bold kept as markdown",
-			html: `<div>Abra&ccedil;os,<br><b>Jo&atilde;o</b></div>`,
-			want: "Abraços,\n*João*",
-		},
-		{
-			name: "lists keep bullets",
-			html: `<ul><li>First</li><li>Second</li></ul>`,
-			want: "* First\n* Second",
-		},
-		{
-			name: "blockquote kept",
-			html: `<blockquote>quoted line</blockquote>after quote`,
-			want: "> \n> quoted line\n\nafter quote",
-		},
-		{
-			name: "multilingual",
-			html: `<div>visible 您好 مرحبا שלום Grüße</div>`,
-			want: "visible 您好 مرحبا שלום Grüße",
-		},
-		{
-			name: "empty input",
-			html: ``,
-			want: "",
-		},
-		{
-			name: "anchor without href keeps its text",
-			html: `<p><a name="top">Top</a> of page.</p>`,
-			want: "Top of page.",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := HTML2TextMarkdownLinks(tt.html); got != tt.want {
-				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
 	}

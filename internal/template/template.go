@@ -19,10 +19,9 @@ import (
 
 var (
 	//go:embed queries.sql
-	efs                   embed.FS
-	ErrTemplateNotFound   = errors.New("template not found")
-	TypeEmailOutgoing     = "email_outgoing"
-	TypeEmailNotification = "email_notification"
+	efs                 embed.FS
+	ErrTemplateNotFound = errors.New("template not found")
+	TypeEmailOutgoing   = "email_outgoing"
 )
 
 // Manager handles template-related operations.

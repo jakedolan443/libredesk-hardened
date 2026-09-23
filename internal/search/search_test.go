@@ -257,13 +257,6 @@ func TestConversationSearchFieldsAndRanking(t *testing.T) {
 			t.Fatalf("message search for %q returned %d results, has_more %t, cursor %q", term, len(messages), hasMore, cursor)
 		}
 
-		contacts, err := manager.Contacts(term, 10)
-		if err != nil {
-			t.Fatalf("searching contacts for %q: %v", term, err)
-		}
-		if len(contacts) != 0 {
-			t.Fatalf("contact search for %q returned %d results", term, len(contacts))
-		}
 	}
 }
 

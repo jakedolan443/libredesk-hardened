@@ -1,11 +1,10 @@
-// Package team handles the management of teams and their members.
+// Package team provides team lookup and membership updates for mailbox users.
 package team
 
 import (
 	"database/sql"
 	"embed"
 	"errors"
-	"fmt"
 
 	"github.com/abhinavxd/libredesk/internal/dbutil"
 	"github.com/abhinavxd/libredesk/internal/envelope"
@@ -13,7 +12,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/knadh/go-i18n"
 	"github.com/lib/pq"
-	"github.com/volatiletech/null/v9"
 	"github.com/zerodha/logf"
 )
 
@@ -38,17 +36,8 @@ type Opts struct {
 
 // queries contains prepared SQL queries.
 type queries struct {
-	GetTeams             *sqlx.Stmt `query:"get-teams"`
-	GetUserTeams         *sqlx.Stmt `query:"get-user-teams"`
-	GetTeamsCompact      *sqlx.Stmt `query:"get-teams-compact"`
-	GetTeamsCompactByIDs *sqlx.Stmt `query:"get-teams-compact-by-ids"`
-	GetTeam              *sqlx.Stmt `query:"get-team"`
-	InsertTeam           *sqlx.Stmt `query:"insert-team"`
-	UpdateTeam           *sqlx.Stmt `query:"update-team"`
-	DeleteTeam           *sqlx.Stmt `query:"delete-team"`
-	GetTeamMembers       *sqlx.Stmt `query:"get-team-members"`
-	UpsertUserTeams      *sqlx.Stmt `query:"upsert-user-teams"`
-	UserBelongsToTeam    *sqlx.Stmt `query:"user-belongs-to-team"`
+	GetTeams        *sqlx.Stmt `query:"get-teams"`
+	UpsertUserTeams *sqlx.Stmt `query:"upsert-user-teams"`
 }
 
 // New creates and returns a new instance of the Manager.
@@ -77,99 +66,6 @@ func (u *Manager) GetAll() ([]models.Team, error) {
 	return teams, nil
 }
 
-// GetAllCompact retrieves teams with limited fields matching query, all of them when pageSize is 0.
-func (u *Manager) GetAllCompact(query string, page, pageSize int) ([]models.TeamCompact, error) {
-	var teams = make([]models.TeamCompact, 0)
-	if err := u.q.GetTeamsCompact.Select(&teams, query, pageSize, dbutil.PageOffset(page, pageSize)); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return teams, nil
-		}
-		u.lo.Error("error fetching teams", "error", err)
-		return teams, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return teams, nil
-}
-
-// GetAllCompactByIDs retrieves the teams with the given IDs with limited fields.
-func (u *Manager) GetAllCompactByIDs(ids []int) ([]models.TeamCompact, error) {
-	var teams = make([]models.TeamCompact, 0)
-	if err := u.q.GetTeamsCompactByIDs.Select(&teams, pq.Array(ids)); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return teams, nil
-		}
-		u.lo.Error("error fetching teams by ids", "error", err)
-		return teams, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return teams, nil
-}
-
-// Get retrieves a team by ID.
-func (u *Manager) Get(id int) (models.Team, error) {
-	var team models.Team
-	if err := u.q.GetTeam.Get(&team, id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			u.lo.Error("team not found", "id", id, "error", err)
-			return team, envelope.NewError(envelope.InputError, u.i18n.T("validation.notFoundTeam"), nil)
-		}
-		u.lo.Error("error fetching team", "id", id, "error", err)
-		return team, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return team, nil
-}
-
-// Create creates a new team.
-func (u *Manager) Create(name, timezone, conversationAssignmentType string, businessHrsID, slaPolicyID null.Int, emoji string, maxAutoAssignedConversations int) (models.Team, error) {
-	var team models.Team
-	if err := u.q.InsertTeam.Get(&team, name, timezone, conversationAssignmentType, businessHrsID, slaPolicyID, emoji, maxAutoAssignedConversations); err != nil {
-		if dbutil.IsUniqueViolationError(err) {
-			return team, envelope.NewError(envelope.GeneralError, u.i18n.T("errors.alreadyExistsTeam"), nil)
-		}
-		u.lo.Error("error inserting team", "error", err)
-		return team, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return team, nil
-}
-
-// Update updates an existing team.
-func (u *Manager) Update(id int, name, timezone, conversationAssignmentType string, businessHrsID, slaPolicyID null.Int, emoji string, maxAutoAssignedConversations int) (models.Team, error) {
-	var team models.Team
-	if err := u.q.UpdateTeam.Get(&team, id, name, timezone, conversationAssignmentType, businessHrsID, slaPolicyID, emoji, maxAutoAssignedConversations); err != nil {
-		u.lo.Error("error updating team", "error", err)
-		return team, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return team, nil
-}
-
-// Delete deletes a team and returns the affected member IDs so callers can invalidate per-user state.
-func (u *Manager) Delete(id int) ([]int, error) {
-	members, err := u.GetMembers(id)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := u.q.DeleteTeam.Exec(id); err != nil {
-		u.lo.Error("error deleting team", "error", err)
-		return nil, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	ids := make([]int, 0, len(members))
-	for _, m := range members {
-		ids = append(ids, m.ID)
-	}
-	return ids, nil
-}
-
-// GetUserTeams retrieves teams of a user by user ID.
-func (u *Manager) GetUserTeams(userID int) ([]models.Team, error) {
-	var teams = make([]models.Team, 0)
-	if err := u.q.GetUserTeams.Select(&teams, userID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return teams, nil
-		}
-		u.lo.Error("error fetching teams", "user_id", userID, "error", err)
-		return teams, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return teams, nil
-}
-
 // UpsertUserTeams updates/inserts exists user teams
 func (u *Manager) UpsertUserTeams(id int, teamNames []string) error {
 	if _, err := u.q.UpsertUserTeams.Exec(id, pq.Array(teamNames)); err != nil {
@@ -177,27 +73,4 @@ func (u *Manager) UpsertUserTeams(id int, teamNames []string) error {
 		return envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
 	}
 	return nil
-}
-
-// UserBelongsToTeam returns true if the user belongs to the team.
-func (u *Manager) UserBelongsToTeam(teamID, userID int) (bool, error) {
-	var exists bool
-	if err := u.q.UserBelongsToTeam.Get(&exists, teamID, userID); err != nil {
-		u.lo.Error("error fetching team members", "team_id", teamID, "user_id", userID, "error", err)
-		return false, envelope.NewError(envelope.GeneralError, u.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return exists, nil
-}
-
-// GetMembers retrieves members of a team.
-func (u *Manager) GetMembers(id int) ([]models.TeamMember, error) {
-	var members = make([]models.TeamMember, 0)
-	if err := u.q.GetTeamMembers.Select(&members, id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return members, nil
-		}
-		u.lo.Error("error fetching team members", "team_id", id, "error", err)
-		return members, fmt.Errorf("fetching team members: %w", err)
-	}
-	return members, nil
 }

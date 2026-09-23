@@ -28,12 +28,6 @@ type TeamCompact struct {
 	Emoji null.String `db:"emoji" json:"emoji"`
 }
 
-type TeamMember struct {
-	ID                 int    `db:"id" json:"id"`
-	AvailabilityStatus string `db:"availability_status" json:"availability_status"`
-	TeamID             int    `db:"team_id" json:"team_id"`
-}
-
 type TeamsCompact []TeamCompact
 
 func (t TeamsCompact) IDs() []int {

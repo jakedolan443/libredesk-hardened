@@ -1,8 +1,8 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="h-12 flex-shrink-0 px-2 border-b flex items-center justify-between gap-2">
-      <div class="flex items-center gap-1 min-w-0">
+    <div class="h-12 flex-shrink-0 px-4 border-b flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
         <Button
           v-if="isMobile"
           variant="ghost"
@@ -12,18 +12,10 @@
         >
           <ChevronLeft class="w-4 h-4" />
         </Button>
-        <span class="truncate">{{ conversationStore.currentContactName }}</span>
+        <Mail class="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span class="truncate text-sm font-medium">{{ conversationStore.currentSenderName }}</span>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <Button
-          v-if="isMobile"
-          variant="ghost"
-          class="w-11 h-11 md:w-8 md:h-8 p-0"
-          :aria-label="t('globals.terms.contact')"
-          @click="emitter.emit(EMITTER_EVENTS.CONVERSATION_SIDEBAR_TOGGLE)"
-        >
-          <PanelRight class="w-4 h-4" />
-        </Button>
         <Tooltip v-if="isSnoozed && snoozedUntilLabel">
           <TooltipTrigger as-child>
             <span class="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
@@ -36,27 +28,6 @@
           </TooltipContent>
         </Tooltip>
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <div
-              v-if="conversationStore.current?.status"
-              class="flex items-center space-x-1 cursor-pointer bg-primary px-3 py-3 md:px-2 md:py-1 rounded-md text-sm"
-            >
-              <span class="text-primary-foreground font-medium inline-block">
-                {{ conversationStore.current?.status }}
-              </span>
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              v-for="status in conversationStore.statusOptions"
-              :key="status.value"
-              @click="handleUpdateStatus(status.label)"
-            >
-              {{ status.label }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Button variant="ghost" class="w-11 h-11 md:w-8 md:h-8 p-0">
               <MoreHorizontal class="w-4 h-4" />
@@ -65,13 +36,6 @@
           <DropdownMenuContent align="end">
             <DropdownMenuItem @click="downloadTranscript">
               {{ t('conversation.downloadTranscript') }}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              v-if="userStore.can(perms.MESSAGES_WRITE_PRIVATE)"
-              :disabled="isSummarizing"
-              @click="summarize"
-            >
-              {{ t('conversation.summarize') }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -115,7 +79,7 @@
           withHandle
           class="h-2 border-0 bg-transparent transition-colors hover:bg-primary/10"
         />
-        <ResizablePanel :default-size="panelSizes[1]" :min-size="14" :max-size="55">
+        <ResizablePanel :default-size="panelSizes[1]" :min-size="18" :max-size="55">
           <ReplyBox />
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -125,11 +89,11 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useStorage } from '@vueuse/core'
 import { useConversationStore } from '@main/stores/conversation'
 import { useUserStore } from '@main/stores/user'
-import { Clock, MoreHorizontal, ChevronLeft, PanelRight } from 'lucide-vue-next'
+import { Clock, MoreHorizontal, ChevronLeft, Mail } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useIsMobile } from '@shared-ui/composables'
 import {
@@ -150,8 +114,6 @@ import {
 } from '@shared-ui/components/ui/resizable'
 import MessageImagePermissions from './message/MessageImagePermissions.vue'
 import { EMITTER_EVENTS, CONVERSATION_ACTIONS } from '@main/constants/emitterEvents.js'
-import { useCommandPalette } from '@/features/command/useCommandPalette'
-import { SNOOZE_COMMAND } from '@/features/command/providers/useConversationCommands'
 import { CONVERSATION_DEFAULT_STATUSES } from '@main/constants/conversation'
 import { useEmitter } from '@main/composables/useEmitter'
 import { useI18n } from 'vue-i18n'
@@ -162,20 +124,21 @@ import { permissions as perms } from '@main/constants/permissions.js'
 const conversationStore = useConversationStore()
 const userStore = useUserStore()
 const emitter = useEmitter()
-const palette = useCommandPalette()
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const isMobile = useIsMobile()
 const imagePermissionMessages = computed(() =>
-  conversationStore.conversationMessages.filter(message =>
-    message.display?.blocked_images > 0 || message.display?.sender_trusted
+  conversationStore.conversationMessages.filter(
+    (message) => message.display?.blocked_images > 0 || message.display?.sender_trusted
   )
 )
 const canCompose = computed(
   () => userStore.can(perms.MESSAGES_WRITE) || userStore.can(perms.MESSAGES_WRITE_PRIVATE)
 )
-const panelSizes = useStorage('conversationComposerPanelSizes', [74, 26])
+// Give email recipients, the editor, and the action bar room to coexist by default.
+// The composer remains resizable down to a compact but usable 18% of the thread.
+const panelSizes = useStorage('conversationComposerPanelSizesV2', [62, 38])
 
 const onConversationLayout = (sizes) => {
   if (sizes.length === 2) panelSizes.value = sizes
@@ -184,7 +147,7 @@ const onConversationLayout = (sizes) => {
 // Each detail route is `<list route name>-conversation`.
 const goBackToList = () => {
   const listName = String(route.name).replace(/-conversation$/, '')
-  const { uuid, ...params } = route.params
+  const { ...params } = route.params
   const target = router.resolve({ name: listName, params })
   if (window.history.state?.back?.split('?')[0] === target.path) router.back()
   else router.push(target)
@@ -213,42 +176,8 @@ const downloadTranscript = async () => {
   }
 }
 
-const isSummarizing = ref(false)
-
-const summarize = async () => {
-  const conversation = conversationStore.current
-  if (!conversation || isSummarizing.value) return
-  try {
-    isSummarizing.value = true
-    emitter.emit(EMITTER_EVENTS.SHOW_TOAST, {
-      variant: 'info',
-      description: t('conversation.summarizing')
-    })
-    await api.aiSummarizeConversation({ conversation_uuid: conversation.uuid })
-    emitter.emit(EMITTER_EVENTS.SHOW_TOAST, {
-      description: t('conversation.summarizeAdded')
-    })
-  } catch (error) {
-    emitter.emit(EMITTER_EVENTS.SHOW_TOAST, {
-      variant: 'destructive',
-      description: handleHTTPError(error).message
-    })
-  } finally {
-    isSummarizing.value = false
-  }
-}
-
-const handleUpdateStatus = (status) => {
-  if (status === CONVERSATION_DEFAULT_STATUSES.SNOOZED) {
-    palette.openPalette({ parent: SNOOZE_COMMAND })
-    return
-  }
-  conversationStore.updateStatus(status)
-}
-
 const paletteActions = {
-  [CONVERSATION_ACTIONS.DOWNLOAD_TRANSCRIPT]: downloadTranscript,
-  [CONVERSATION_ACTIONS.SUMMARIZE]: summarize
+  [CONVERSATION_ACTIONS.DOWNLOAD_TRANSCRIPT]: downloadTranscript
 }
 const onPaletteAction = (action) => paletteActions[action]?.()
 

@@ -15,30 +15,7 @@
       class="mb-1 flex items-center gap-1"
       :class="isOutgoing ? 'pr-2 md:pr-[47px]' : 'pl-10 md:pl-[47px]'"
     >
-      <router-link
-        v-if="!isOutgoing"
-        :to="{ name: 'contact-detail', params: { id: message.author?.id } }"
-        class="cursor-pointer text-muted-foreground text-sm font-medium hover:underline hover:text-foreground transition-colors duration-200"
-      >
-        {{ getFullName }}
-      </router-link>
-      <router-link
-        v-else-if="canManageAI"
-        :to="aiAssistantRoute"
-        class="cursor-pointer text-muted-foreground text-sm font-medium hover:underline hover:text-foreground transition-colors duration-200"
-      >
-        {{ getFullName }}
-      </router-link>
-      <router-link
-        v-else-if="canManageUsers"
-        :to="{ name: 'edit-agent', params: { id: message.author?.id } }"
-        class="cursor-pointer text-muted-foreground text-sm font-medium hover:underline hover:text-foreground transition-colors duration-200"
-      >
-        {{ getFullName }}
-      </router-link>
-      <p v-else class="text-muted-foreground text-sm font-medium">
-        {{ getFullName }}
-      </p>
+      <p class="text-muted-foreground text-sm font-medium">{{ getFullName }}</p>
     </div>
 
     <!-- Message Bubble -->
@@ -48,18 +25,14 @@
     >
       <!-- Avatar (left for incoming) -->
       <template v-if="!isOutgoing && !isEmailMessage">
-        <router-link
-          v-if="!groupWithPrev"
-          :to="{ name: 'contact-detail', params: { id: message.author?.id } }"
-          class="flex-shrink-0"
-        >
+        <div v-if="!groupWithPrev" class="flex-shrink-0">
           <Avatar class="cursor-pointer w-8 h-8 hover:opacity-80 transition-opacity">
             <AvatarImage :src="getAvatar" />
             <AvatarFallback class="font-medium">
               {{ avatarFallback }}
             </AvatarFallback>
           </Avatar>
-        </router-link>
+        </div>
         <div v-else class="w-8 flex-shrink-0" />
       </template>
 
@@ -137,7 +110,7 @@
                 <div
                   v-else
                   :class="{
-                    'email-light-canvas': !isOutgoing && convStore.current?.inbox_channel === 'email'
+                    'email-light-canvas': isEmailMessage
                   }"
                 >
                   <SafeMessageContent
@@ -196,7 +169,6 @@
               <BubbleAttachmentPreview :attachments="nonInlineAttachments" />
 
               <!-- CSAT Response -->
-              <CSATResponseDisplay :message="message" />
 
               <!-- Spinner for Pending Messages (outgoing only) -->
               <Spinner v-if="isOutgoing && message.status === 'pending'" size="sm" />
@@ -204,15 +176,8 @@
               <!-- Status Icons (outgoing only) -->
               <div v-if="isOutgoing" class="flex items-center space-x-2 mt-2 self-end">
                 <Lock :size="12" v-if="isPrivateMessage" class="text-muted-foreground" />
-                <Tooltip v-if="isReadByContact">
-                  <TooltipTrigger>
-                    <CheckCheck :size="14" class="text-success" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{{ t('globals.terms.read') }}</p>
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip v-else-if="isDelivered">
+
+                <Tooltip v-if="isDelivered">
                   <TooltipTrigger>
                     <Check :size="14" class="text-success" />
                   </TooltipTrigger>
@@ -243,26 +208,6 @@
       <!-- Avatar (right for outgoing) -->
       <template v-if="isOutgoing && !isEmailMessage">
         <div v-if="groupWithPrev" class="w-8 flex-shrink-0" />
-        <router-link v-else-if="canManageAI" :to="aiAssistantRoute" class="flex-shrink-0">
-          <Avatar class="cursor-pointer w-8 h-8 hover:opacity-80 transition-opacity">
-            <AvatarImage :src="getAvatar" />
-            <AvatarFallback class="font-medium">
-              {{ avatarFallback }}
-            </AvatarFallback>
-          </Avatar>
-        </router-link>
-        <router-link
-          v-else-if="canManageUsers"
-          :to="{ name: 'edit-agent', params: { id: message.author?.id } }"
-          class="flex-shrink-0"
-        >
-          <Avatar class="cursor-pointer w-8 h-8 hover:opacity-80 transition-opacity">
-            <AvatarImage :src="getAvatar" />
-            <AvatarFallback class="font-medium">
-              {{ avatarFallback }}
-            </AvatarFallback>
-          </Avatar>
-        </router-link>
         <Avatar v-else class="w-8 h-8">
           <AvatarImage :src="getAvatar" />
           <AvatarFallback class="font-medium">
@@ -310,16 +255,7 @@ import { computed, ref, onMounted, nextTick, watch } from 'vue'
 import { useConversationStore } from '@main/stores/conversation'
 import { useUserStore } from '@main/stores/user'
 import { useI18n } from 'vue-i18n'
-import {
-  Lock,
-  Mail,
-  RotateCcw,
-  Check,
-  CheckCheck,
-  Maximize2,
-  Trash2,
-  MoreHorizontal
-} from 'lucide-vue-next'
+import { Lock, Mail, RotateCcw, Check, Maximize2, Trash2, MoreHorizontal } from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -345,7 +281,7 @@ import SafeMessageContent from '@shared-ui/components/SafeMessageContent.vue'
 import ImageLightbox from '@/components/ImageLightbox.vue'
 import BubbleAttachmentPreview from '@main/features/conversation/message/attachment/BubbleAttachmentPreview.vue'
 import MessageEnvelope from './MessageEnvelope.vue'
-import CSATResponseDisplay from './CSATResponseDisplay.vue'
+
 import api from '@main/api'
 import { containsQuoteMarkers } from '@shared-ui/utils/quotedContent.js'
 
@@ -364,7 +300,6 @@ const measureExpandable = () => {
 onMounted(async () => {
   await nextTick()
   measureExpandable()
-
 })
 
 const props = defineProps({
@@ -396,17 +331,6 @@ const deleteNote = () => {
   alertOpen.value = false
 }
 
-const isSystemUser = computed(() => props.message.author?.email === 'System')
-const isAIAssistant = computed(() => props.message.author?.type === 'ai_assistant')
-const canManageUsers = computed(
-  () => !isSystemUser.value && !isAIAssistant.value && userStore.can('users:manage')
-)
-const canManageAI = computed(() => isAIAssistant.value && userStore.can('ai:manage'))
-const aiAssistantRoute = computed(() => {
-  const id = props.message.meta?.ai_assistant_id
-  return id ? { name: 'edit-ai-assistant', params: { id } } : { name: 'ai-assistants' }
-})
-
 const isOutgoing = computed(() => props.direction === 'outgoing')
 
 const getFullName = computed(() => {
@@ -437,12 +361,15 @@ const messageText = computed(() => {
 })
 
 const nonInlineAttachments = computed(() =>
-  props.message.attachments.filter((attachment) => attachment.unavailable || attachment.disposition !== 'inline')
+  props.message.attachments.filter(
+    (attachment) => attachment.unavailable || attachment.disposition !== 'inline'
+  )
 )
 
 const bubbleClasses = computed(() => ({
   'email-message-bubble': isEmailMessage.value,
-  '!w-full': props.message.content_type !== 'text' && typeof props.message.display?.html === 'string',
+  '!w-full':
+    props.message.content_type !== 'text' && typeof props.message.display?.html === 'string',
   'bg-private': isOutgoing.value && props.message.private,
   'bg-secondary border border-border': isOutgoing.value && !props.message.private,
   'opacity-50 animate-pulse': isOutgoing.value && props.message.status === 'pending',
@@ -463,13 +390,6 @@ const canDeleteNote = computed(
 const isDelivered = computed(
   () => isOutgoing.value && props.message.status === 'sent' && !isPrivateMessage.value
 )
-const isReadByContact = computed(() => {
-  const conversation = convStore.current
-  const lastSeenAt = conversation?.contact_last_seen_at
-  const isLiveChat = conversation?.inbox_channel === 'livechat'
-  if (!isDelivered.value || !lastSeenAt || !isLiveChat) return false
-  return new Date(props.message.created_at) <= new Date(lastSeenAt)
-})
 const showRetry = computed(
   () =>
     isOutgoing.value &&

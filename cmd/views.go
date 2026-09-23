@@ -273,11 +273,8 @@ func validateSharedView(app *App, view vmodels.View) error {
 	if err := app.conversation.ValidateListFilters(string(view.Filters)); err != nil {
 		return err
 	}
-	if view.Visibility != vmodels.VisibilityAll && view.Visibility != vmodels.VisibilityTeam {
+	if view.Visibility != vmodels.VisibilityAll {
 		return envelope.NewError(envelope.InputError, app.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	if view.Visibility == vmodels.VisibilityTeam && (view.TeamID == nil || *view.TeamID <= 0) {
-		return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.required", "name", "`team_id`"), nil)
 	}
 	return nil
 }

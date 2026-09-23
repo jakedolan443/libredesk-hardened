@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { handleHTTPError } from '@shared-ui/utils/http.js'
 import { useEmitter } from '../composables/useEmitter'
 import { EMITTER_EVENTS } from '../constants/emitterEvents'
-import { adminNavItems, reportsNavItems } from '../constants/navigation'
+import { adminNavItems } from '../constants/navigation'
 import { filterNavItems } from '../utils/nav-permissions'
 import api from '../api'
 import { useStorage } from '@vueuse/core'
@@ -18,7 +18,7 @@ export const useUserStore = defineStore('user', () => {
     teams: [],
     permissions: [],
     roles: [],
-    availability_status: 'offline',
+    availability_status: 'offline'
   })
   const emitter = useEmitter()
 
@@ -50,10 +50,6 @@ export const useUserStore = defineStore('user', () => {
 
   const hasAdminTabPermissions = computed(() => {
     return filterNavItems(adminNavItems, can).length > 0
-  })
-
-  const hasReportTabPermissions = computed(() => {
-    return filterNavItems(reportsNavItems, can).length > 0
   })
 
   const getCurrentUser = async () => {
@@ -92,7 +88,10 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // Set and watch user availability status in localStorage to sync across tabs
-  const availabilityStatusStorage = useStorage('user_availability_status', user.value.availability_status)
+  const availabilityStatusStorage = useStorage(
+    'user_availability_status',
+    user.value.availability_status
+  )
   watch(availabilityStatusStorage, (newVal) => {
     user.value.availability_status = newVal
   })
@@ -114,7 +113,7 @@ export const useUserStore = defineStore('user', () => {
   })
 
   const hasRole = (role) => {
-    return roles.value.some(r => r === role)
+    return roles.value.some((r) => r === role)
   }
 
   return {
@@ -132,7 +131,6 @@ export const useUserStore = defineStore('user', () => {
     getFullName,
     getInitials,
     hasAdminTabPermissions,
-    hasReportTabPermissions,
     setCurrentUser,
     getCurrentUser,
     clearAvatar,

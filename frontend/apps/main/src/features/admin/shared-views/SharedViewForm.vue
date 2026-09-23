@@ -23,50 +23,6 @@
       </FormItem>
     </FormField>
 
-    <div class="grid grid-cols-2 gap-4">
-      <FormField
-        v-slot="{ componentField }"
-        name="visibility"
-        :validate-on-blur="false"
-        :validate-on-change="false"
-        :validate-on-input="false"
-        :validate-on-mount="false"
-        :validate-on-model-update="false"
-      >
-        <FormItem>
-          <FormLabel>{{ t('globals.terms.visibility') }}</FormLabel>
-          <FormControl>
-            <Select v-bind="componentField">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">{{ t('sharedView.allAgents') }}</SelectItem>
-                  <SelectItem value="team">{{ t('globals.terms.team') }}</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      </FormField>
-
-      <FormField
-        v-if="form.values.visibility === 'team'"
-        v-slot="{ componentField }"
-        name="team_id"
-      >
-        <FormItem>
-          <FormLabel>{{ t('globals.terms.team') }}</FormLabel>
-          <FormControl>
-            <SelectTeamCombobox v-bind="componentField" />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      </FormField>
-    </div>
-
     <Button type="submit" :isLoading="isLoading">{{ submitLabel }}</Button>
   </form>
 </template>
@@ -96,15 +52,6 @@ import {
   createRoot
 } from '@/components/filter/filterTree'
 import { useConversationFilters } from '@/composables/useConversationFilters'
-import SelectTeamCombobox from '@/components/combobox/SelectTeamCombobox.vue'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@shared-ui/components/ui/select'
 import { useI18n } from 'vue-i18n'
 import { z } from 'zod'
 
@@ -152,37 +99,28 @@ const filterFields = computed(() =>
 )
 
 const formSchema = toTypedSchema(
-  z
-    .object({
-      name: z
-        .string({
-          required_error: t('globals.messages.required')
-        })
-        .min(2, { message: t('view.form.name.length') })
-        .max(140, { message: t('view.form.name.length') }),
-      filters: z
-        .object({
-          logic: z.string().optional(),
-          rules: z.array(z.any()).optional()
-        })
-        .passthrough()
-        .default(() => createRoot()),
-      visibility: z.enum(['all', 'team']),
-      team_id: z.string().nullable().optional()
-    })
-    .refine(
-      (data) => {
-        if (data.visibility === 'team') return !!data.team_id
-        return true
-      },
-      { message: t('globals.messages.required'), path: ['team_id'] }
-    )
+  z.object({
+    name: z
+      .string({
+        required_error: t('globals.messages.required')
+      })
+      .min(2, { message: t('view.form.name.length') })
+      .max(140, { message: t('view.form.name.length') }),
+    filters: z
+      .object({
+        logic: z.string().optional(),
+        rules: z.array(z.any()).optional()
+      })
+      .passthrough()
+      .default(() => createRoot()),
+    visibility: z.literal('all')
+  })
 )
 
 const form = useForm({
   validationSchema: formSchema,
   initialValues: {
-    visibility: props.initialValues.visibility || 'all',
+    visibility: 'all',
     filters: createRoot()
   }
 })
@@ -200,11 +138,8 @@ const onSubmit = form.handleSubmit(async (values) => {
 
   const payload = { ...values, filters: serializeFilterTree(values.filters) }
 
-  if (payload.visibility === 'all') {
-    payload.team_id = null
-  } else {
-    payload.team_id = payload.team_id ? Number(payload.team_id) : null
-  }
+  payload.visibility = 'all'
+  payload.team_id = null
 
   props.submitForm(payload)
 })
@@ -220,11 +155,7 @@ watch(
       filterFields.value
     )
 
-    // Convert team_id to string for the select component
-    if (processedVal.team_id) {
-      processedVal.team_id = String(processedVal.team_id)
-    }
-
+    processedVal.visibility = 'all'
     form.setValues(processedVal, false)
   },
   { immediate: true }
