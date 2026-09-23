@@ -11,35 +11,16 @@
         }"
       >
         <div class="flex items-start gap-2">
-          <!-- Avatar with channel indicator (checkbox overlays on hover / when selecting) -->
-          <div class="relative flex-shrink-0 w-10 h-10">
-            <div
-              class="transition-opacity"
-              :class="avatarOpacityClass"
-              :aria-hidden="showCheckbox"
-            >
-              <Avatar class="w-10 h-10 rounded-full">
-                <AvatarImage
-                  :src="conversation.contact.avatar_url || ''"
-                  class="object-cover"
-                />
-                <AvatarFallback>
-                  {{ conversation.contact.first_name.substring(0, 2).toUpperCase() }}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-            <div
-              v-if="canBulkAct"
-              class="absolute inset-0 items-center justify-center"
-              :class="showCheckbox ? 'flex' : 'hidden can-hover:group-hover:flex'"
-              @click.prevent.stop="handleCheckboxClick"
-            >
-              <Checkbox
-                :checked="isItemSelected"
-                :aria-label="t('conversation.bulkActions.selectConversation')"
-                class="w-5 h-5"
-              />
-            </div>
+          <div
+            v-if="showCheckbox"
+            class="shrink-0 pt-0.5"
+            @click.prevent.stop="handleCheckboxClick"
+          >
+            <Checkbox
+              :checked="isItemSelected"
+              :aria-label="t('conversation.bulkActions.selectConversation')"
+              class="w-5 h-5"
+            />
           </div>
 
           <!-- Content container -->
@@ -60,11 +41,10 @@
                   <TooltipContent>{{ contactFullName }}</TooltipContent>
                 </Tooltip>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                  <PriorityMarker :priority="conversation.priority" />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <component
-                        :is="conversation.inbox_channel === 'livechat' ? MessageSquare : Mail"
+                        :is="Mail"
                         class="w-3 h-3 text-muted-foreground"
                         role="img"
                         :aria-label="conversation.inbox_name"
@@ -115,37 +95,14 @@
                 v-if="isUnread"
                 class="flex items-center justify-center w-5 h-5 bg-primary text-primary-foreground text-xs font-medium rounded-full flex-shrink-0"
               >
-                {{ conversation.unread_message_count > 9 ? '9+' : conversation.unread_message_count }}
+                {{
+                  conversation.unread_message_count > 9 ? '9+' : conversation.unread_message_count
+                }}
               </div>
             </div>
 
             <!-- SLA Badges -->
-            <div v-if="hasSlaDeadlines" class="flex items-center gap-1">
-              <SlaBadge
-                v-show="frdStatus === 'overdue' || frdStatus === 'remaining'"
-                :dueAt="conversation.first_response_deadline_at"
-                :actualAt="conversation.first_reply_at"
-                :label="'FRD'"
-                :showExtra="false"
-                @status="frdStatus = $event"
-              />
-              <SlaBadge
-                v-show="rdStatus === 'overdue' || rdStatus === 'remaining'"
-                :dueAt="conversation.resolution_deadline_at"
-                :actualAt="conversation.resolved_at"
-                :label="'RD'"
-                :showExtra="false"
-                @status="rdStatus = $event"
-              />
-              <SlaBadge
-                v-show="nrdStatus === 'overdue' || nrdStatus === 'remaining'"
-                :dueAt="conversation.next_response_deadline_at"
-                :actualAt="conversation.next_response_met_at"
-                :label="'NRD'"
-                :showExtra="false"
-                @status="nrdStatus = $event"
-              />
-            </div>
+            <div v-if="hasSlaDeadlines" class="flex items-center gap-1"></div>
           </div>
         </div>
       </router-link>
@@ -168,16 +125,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getRelativeTime } from '@shared-ui/utils/datetime.js'
-import { Mail, MessageSquare, Reply, MailOpen, SquareCheck } from 'lucide-vue-next'
-import { Avatar, AvatarFallback, AvatarImage } from '@shared-ui/components/ui/avatar'
+import { Mail, Reply, MailOpen, SquareCheck } from 'lucide-vue-next'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger
 } from '@shared-ui/components/ui/context-menu'
-import SlaBadge from '@main/features/sla/SlaBadge.vue'
-import PriorityMarker from '@main/features/conversation/PriorityMarker.vue'
+
 import { Tooltip, TooltipContent, TooltipTrigger } from '@shared-ui/components/ui/tooltip'
 import { Checkbox } from '@shared-ui/components/ui/checkbox'
 import { useConversationStore } from '@main/stores/conversation'
@@ -192,9 +147,6 @@ const conversationStore = useConversationStore()
 const appSettingsStore = useAppSettingsStore()
 const { canBulkAct } = useBulkActionPermissions()
 const { t } = useI18n()
-const frdStatus = ref('')
-const rdStatus = ref('')
-const nrdStatus = ref('')
 
 const props = defineProps({
   conversation: Object,
@@ -207,16 +159,11 @@ const handleMarkAsUnread = () => {
 }
 
 const conversationRoute = computed(() => {
-  const baseRoute = route.params.teamID
-    ? 'team-inbox-conversation'
-    : route.params.viewID
-      ? 'view-inbox-conversation'
-      : 'inbox-conversation'
+  const baseRoute = route.params.viewID ? 'view-inbox-conversation' : 'inbox-conversation'
   return {
     name: baseRoute,
     params: {
       uuid: props.conversation.uuid,
-      ...(baseRoute === 'team-inbox-conversation' && { teamID: route.params.teamID }),
       ...(baseRoute === 'view-inbox-conversation' && { viewID: route.params.viewID })
     },
     query: props.conversation.mentioned_message_uuid
@@ -262,7 +209,8 @@ const draftPreview = computed(() => {
   if (!draft?.content && !draft?.meta?.attachments?.length) return ''
   const text = (draft.content || '').replace(/<[^>]*>/g, '').trim()
   if (text) return text.length > 120 ? text.slice(0, 120) + '...' : text
-  if (draft.meta?.attachments?.length) return conversationStore.getMediaPreview(draft.meta.attachments)
+  if (draft.meta?.attachments?.length)
+    return conversationStore.getMediaPreview(draft.meta.attachments)
   if (/<img\b/i.test(draft.content || '')) return t('globals.terms.image', 1)
   return ''
 })
@@ -281,13 +229,7 @@ const isItemSelected = computed(() => {
 
 const showCheckbox = computed(() => {
   if (!canBulkAct.value) return false
-  return isItemSelected.value || conversationStore.selectedCount > 0
-})
-
-const avatarOpacityClass = computed(() => {
-  if (showCheckbox.value) return 'opacity-0'
-  if (canBulkAct.value) return 'opacity-100 can-hover:group-hover:opacity-0'
-  return 'opacity-100'
+  return isItemSelected.value
 })
 
 const handleCheckboxClick = (event) => {

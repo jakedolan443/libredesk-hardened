@@ -7,7 +7,6 @@ export const WS_EVENT = {
   CONVERSATION_SUBSCRIBE: 'conversation_subscribe',
   LIST_SUBSCRIBE_REPLACE: 'list_subscribe_replace',
   TYPING: 'typing',
-  NEW_NOTIFICATION: 'new_notification',
   AGENT_AVAILABILITY_UPDATE: 'agent_availability_update',
   SYSTEM_TOAST: 'system_toast'
 }

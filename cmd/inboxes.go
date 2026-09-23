@@ -3,16 +3,15 @@ package main
 import (
 	"encoding/json"
 	"net/mail"
-	"regexp"
+
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/abhinavxd/libredesk/internal/envelope"
-	"github.com/abhinavxd/libredesk/internal/httputil"
+
 	"github.com/abhinavxd/libredesk/internal/inbox"
 	"github.com/abhinavxd/libredesk/internal/inbox/channel/email/oauth"
-	"github.com/abhinavxd/libredesk/internal/inbox/channel/livechat"
+
 	imodels "github.com/abhinavxd/libredesk/internal/inbox/models"
 	"github.com/valyala/fasthttp"
 	"github.com/zerodha/fastglue"
@@ -182,6 +181,13 @@ func handleDeleteInbox(r *fastglue.Request) error {
 
 // validateInbox validates the inbox
 func validateInbox(app *App, inbox imodels.Inbox) error {
+	if inbox.Channel != "email" {
+		return envelope.NewError(envelope.InputError, "Only email inboxes are supported", nil)
+	}
+	if inbox.CSATEnabled {
+		return envelope.NewError(envelope.InputError, "Customer surveys are no longer supported", nil)
+	}
+
 	// Validate from address only for email channels.
 	if inbox.Channel == "email" {
 		if _, err := mail.ParseAddress(inbox.From); err != nil {
@@ -204,134 +210,6 @@ func validateInbox(app *App, inbox imodels.Inbox) error {
 	}
 	if inbox.Channel == "" {
 		return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.empty", "name", "channel"), nil)
-	}
-
-	// Validate livechat-specific configuration
-	if inbox.Channel == livechat.ChannelLiveChat {
-		var config livechat.Config
-		if err := json.Unmarshal(inbox.Config, &config); err == nil {
-			// ShowOfficeHoursAfterAssignment cannot be enabled if ShowOfficeHoursInChat is disabled
-			if config.ShowOfficeHoursAfterAssignment && !config.ShowOfficeHoursInChat {
-				return envelope.NewError(envelope.InputError, "`show_office_hours_after_assignment` cannot be enabled when `show_office_hours_in_chat` is disabled", nil)
-			}
-			// Validate continuity settings - required when linked email inbox is set.
-			if inbox.LinkedEmailInboxID.Valid && inbox.LinkedEmailInboxID.Int > 0 {
-				if config.Continuity.OfflineThreshold == "" {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.empty", "name", "offline_threshold"), nil)
-				}
-				if config.Continuity.MinEmailInterval == "" {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.empty", "name", "min_email_interval"), nil)
-				}
-				if config.Continuity.MaxMessagesPerEmail == 0 {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.empty", "name", "max_messages_per_email"), nil)
-				}
-			}
-			if config.Continuity.OfflineThreshold != "" {
-				d, err := time.ParseDuration(config.Continuity.OfflineThreshold)
-				if err != nil {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.invalidDuration", "name", "offline_threshold"), nil)
-				}
-				if d < time.Minute {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.minDuration", "name", "offline_threshold", "min", "1m"), nil)
-				}
-			}
-			if config.Continuity.MinEmailInterval != "" {
-				d, err := time.ParseDuration(config.Continuity.MinEmailInterval)
-				if err != nil {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.invalidDuration", "name", "min_email_interval"), nil)
-				}
-				if d < time.Minute {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.minDuration", "name", "min_email_interval", "min", "1m"), nil)
-				}
-			}
-			if config.Continuity.MaxMessagesPerEmail != 0 {
-				if config.Continuity.MaxMessagesPerEmail < 1 || config.Continuity.MaxMessagesPerEmail > 100 {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.minmaxNumber", "min", "1", "max", "100"), nil)
-				}
-			}
-
-			// Validate colors.
-			hexColorRegex := regexp.MustCompile(`^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$`)
-			if config.Colors.Primary == "" {
-				return envelope.NewError(envelope.InputError, app.i18n.Ts("globals.messages.empty", "name", "primary color"), nil)
-			}
-			if !hexColorRegex.MatchString(config.Colors.Primary) {
-				return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidColor"), nil)
-			}
-
-			// Validate launcher position.
-			if config.Launcher.Position != "left" && config.Launcher.Position != "right" {
-				return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidValue"), nil)
-			}
-
-			// Validate launcher spacing: clamp to a sane range so a fat-fingered value doesn't push the launcher off-screen.
-			if config.Launcher.Spacing.Side < 0 || config.Launcher.Spacing.Side > 200 ||
-				config.Launcher.Spacing.Bottom < 0 || config.Launcher.Spacing.Bottom > 200 {
-				return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidValue"), nil)
-			}
-
-			// Validate home apps.
-			for _, ha := range config.HomeApps {
-				if ha.URL != "" && !httputil.IsValidHTTPURL(ha.URL) {
-					return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidUrl"), nil)
-				}
-				if ha.Type == livechat.HomeAppAnnouncement && ha.ImageURL != "" && !httputil.IsValidHTTPURL(ha.ImageURL) {
-					return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidUrl"), nil)
-				}
-			}
-
-			// Validate home screen background image URL.
-			if config.HomeScreen.Background.ImageURL != "" && !httputil.IsValidHTTPURL(config.HomeScreen.Background.ImageURL) {
-				return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidUrl"), nil)
-			}
-
-			// Validate URLs if set.
-			for _, u := range []string{config.LogoURL, config.Launcher.LogoURL, config.WebsiteURL} {
-				if u != "" && !httputil.IsValidHTTPURL(u) {
-					return envelope.NewError(envelope.InputError, app.i18n.T("validation.invalidUrl"), nil)
-				}
-			}
-
-			// Validate trusted domains.
-			// Valid formats: example.com, *.example.com, sub.example.com, example.com:8080
-			for _, domain := range config.TrustedDomains {
-				d := strings.TrimSpace(domain)
-				if d == "" {
-					continue
-				}
-				if strings.Contains(d, "://") || strings.Contains(d, "/") || strings.Contains(d, " ") {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.invalidDomain", "domain", d), nil)
-				}
-				// Wildcard must be at the start followed by a dot.
-				if strings.Contains(d, "*") && !strings.HasPrefix(d, "*.") {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.invalidDomain", "domain", d), nil)
-				}
-			}
-
-			// Validate blocked IPs entries.
-			for _, entry := range config.BlockedIPs {
-				if !httputil.ValidateIPOrCIDR(entry) {
-					return envelope.NewError(envelope.InputError, app.i18n.Ts("validation.invalidIPOrCIDR", "entry", entry), nil)
-				}
-			}
-		}
-
-		// Validate linked email inbox if specified
-		if inbox.LinkedEmailInboxID.Valid {
-			linkedInbox, err := app.inbox.GetDBRecord(int(inbox.LinkedEmailInboxID.Int))
-			if err != nil {
-				return envelope.NewError(envelope.InputError, app.i18n.T("globals.messages.somethingWentWrong"), nil)
-			}
-			// Ensure linked inbox is an email channel
-			if linkedInbox.Channel != "email" {
-				return envelope.NewError(envelope.InputError, app.i18n.T("globals.messages.somethingWentWrong"), nil)
-			}
-			// Ensure linked inbox is enabled
-			if !linkedInbox.Enabled {
-				return envelope.NewError(envelope.InputError, app.i18n.T("globals.messages.somethingWentWrong"), nil)
-
-			}
-		}
 	}
 
 	// Validate email channel config.

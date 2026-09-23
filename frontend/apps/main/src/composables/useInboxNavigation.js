@@ -21,8 +21,7 @@ export function useInboxNavigation() {
   }
 
   const navigateToInbox = (type) => navigate('inbox', { type })
-  const navigateToTeamInbox = (teamID) => navigate('team-inbox', { teamID })
   const navigateToViewInbox = (viewID) => navigate('view-inbox', { viewID })
 
-  return { navigateToInbox, navigateToTeamInbox, navigateToViewInbox }
+  return { navigateToInbox, navigateToViewInbox }
 }

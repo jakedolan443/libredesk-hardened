@@ -1,11 +1,12 @@
 <template>
   <div class="flex flex-col relative h-full">
-    <div ref="threadEl" class="flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]" @scroll="handleScroll">
-      <div ref="contentEl" class="min-h-full px-4 pb-10 relative">
-        <div
-          v-if="showLoadMore"
-          class="text-center mt-3"
-        >
+    <div
+      ref="threadEl"
+      class="flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]"
+      @scroll="handleScroll"
+    >
+      <div ref="contentEl" class="min-h-full px-4 pt-4 pb-10 relative">
+        <div v-if="showLoadMore" class="text-center mt-3">
           <Button
             size="sm"
             variant="outline"
@@ -25,18 +26,19 @@
 
         <MessagesSkeleton :count="10" v-if="conversationStore.messages.loading" />
 
-        <TransitionGroup v-else enter-active-class="animate-slide-in" leave-active-class="message-leaving" tag="div">
+        <TransitionGroup
+          v-else
+          enter-active-class="animate-slide-in"
+          leave-active-class="message-leaving"
+          tag="div"
+        >
           <div
             v-for="row in messageRows"
             :key="row.message.uuid"
             :data-message-uuid="row.message.uuid"
             :class="[row.spacingClass, { 'my-2': row.message.type === 'activity' }]"
           >
-            <DaySeparator
-              v-if="row.showDaySeparator"
-              :date="row.message.created_at"
-              class="mb-4"
-            />
+            <DaySeparator v-if="row.showDaySeparator" :date="row.message.created_at" class="mb-4" />
             <div v-if="!row.message.private && row.message.type !== 'activity'">
               <MessageBubble
                 :message="row.message"
@@ -72,13 +74,6 @@
       :unread-count="unReadMessages"
       @scroll-to-bottom="handleScrollToBottom"
     />
-
-    <!-- Nudge to self-assign after replying to an unassigned conversation -->
-    <AssignSelfNudge
-      :show="showAssignNudge"
-      @assign="assignToSelf"
-      @dismiss="showAssignNudge = false"
-    />
   </div>
 </template>
 
@@ -94,10 +89,9 @@ import { RefreshCw, Loader2 } from 'lucide-vue-next'
 import ScrollToBottomButton from '@shared-ui/components/ScrollToBottomButton'
 import DaySeparator from '@shared-ui/components/DaySeparator'
 import { isSameDay } from 'date-fns'
-import AssignSelfNudge from './AssignSelfNudge.vue'
+
 import { useEmitter } from '@main/composables/useEmitter'
 import { EMITTER_EVENTS } from '@main/constants/emitterEvents'
-import { useBulkActionPermissions } from '@main/composables/useBulkActionPermissions'
 import MessagesSkeleton from './MessagesSkeleton.vue'
 import { TypingIndicator } from '@shared-ui/components/TypingIndicator'
 import { useStickyScroll } from '@shared-ui/composables'
@@ -111,22 +105,26 @@ const route = useRoute()
 
 const conversationStore = useConversationStore()
 const userStore = useUserStore()
+const isEmailConversation = computed(() => conversationStore.current?.inbox_channel === 'email')
 const threadEl = ref(null)
 const contentEl = ref(null)
 const emitter = useEmitter()
 const unReadMessages = ref(0)
-const showAssignNudge = ref(false)
-const { canAssignAgent } = useBulkActionPermissions()
+
+const unreadCountAtOpen = ref(0)
+
 let currentConversationUUID = ''
 let openScrollDone = false
 
-const assignToSelf = () => {
-  conversationStore.updateAssignee('user', { assignee_id: userStore.userID })
-}
-
-const { hasUserScrolled, scrollToBottom, scrollToOffset, handleScroll } = useStickyScroll(threadEl, contentEl, {
-  onArriveBottom: () => { unReadMessages.value = 0 }
-})
+const { hasUserScrolled, scrollToBottom, scrollToOffset, handleScroll } = useStickyScroll(
+  threadEl,
+  contentEl,
+  {
+    onArriveBottom: () => {
+      unReadMessages.value = 0
+    }
+  }
+)
 
 const handleScrollToBottom = () => {
   hasUserScrolled.value = false
@@ -137,7 +135,13 @@ const applyOpenScroll = () => {
   const thread = threadEl.value
   if (!thread) return
   const targetUUID = route.query.scrollTo
-  const targetEl = targetUUID ? thread.querySelector(`[data-message-uuid="${targetUUID}"]`) : null
+  const messages = conversationStore.conversationMessages
+  const unreadStartIndex = Math.max(messages.length - unreadCountAtOpen.value, 0)
+  const unreadTargetUUID = unreadCountAtOpen.value ? messages[unreadStartIndex]?.uuid : null
+  const initialTargetUUID = targetUUID || unreadTargetUUID
+  const targetEl = initialTargetUUID
+    ? thread.querySelector(`[data-message-uuid="${initialTargetUUID}"]`)
+    : null
   if (targetEl) {
     hasUserScrolled.value = true
     // Messages above the target collapse to max-h after mount, so re-pin until offsetTop stops moving.
@@ -150,14 +154,17 @@ const applyOpenScroll = () => {
       scrollToOffset(Math.max(0, offset - threadEl.value.clientHeight * MENTION_TOP_OFFSET_RATIO))
       stableFrames = offset === lastOffset ? stableFrames + 1 : 0
       lastOffset = offset
-      if (stableFrames < MENTION_SETTLE_FRAMES && ++frames < MENTION_MAX_ANCHOR_FRAMES) requestAnimationFrame(anchorToTarget)
+      if (stableFrames < MENTION_SETTLE_FRAMES && ++frames < MENTION_MAX_ANCHOR_FRAMES)
+        requestAnimationFrame(anchorToTarget)
     }
     anchorToTarget()
     targetEl.classList.add('highlight-mention')
     setTimeout(() => targetEl.classList.remove('highlight-mention'), HIGHLIGHT_MS)
   } else {
-    hasUserScrolled.value = false
-    scrollToBottom()
+    // Treat the top position as intentional so the resize observer does not
+    // immediately move the thread back to the bottom while the UI settles.
+    hasUserScrolled.value = true
+    scrollToOffset(0)
   }
 }
 
@@ -166,14 +173,6 @@ const newMessageHandler = (data) => {
   const message = data.message
   if (message?.sender_id === userStore.userID) {
     hasUserScrolled.value = false
-    if (
-      message.type === 'outgoing' &&
-      !message.private &&
-      !conversationStore.current.assigned_user_id &&
-      canAssignAgent.value
-    ) {
-      showAssignNudge.value = true
-    }
     return
   }
   if (hasUserScrolled.value) unReadMessages.value++
@@ -192,16 +191,11 @@ watch(
   (newUUID) => {
     if (!newUUID || newUUID === currentConversationUUID) return
     currentConversationUUID = newUUID
+    unreadCountAtOpen.value =
+      conversationStore.conversationsList.find((conversation) => conversation.uuid === newUUID)
+        ?.unread_message_count || 0
     unReadMessages.value = 0
     openScrollDone = false
-    showAssignNudge.value = false
-  }
-)
-
-watch(
-  () => conversationStore.current?.assigned_user_id,
-  (assignedUserId) => {
-    if (assignedUserId) showAssignNudge.value = false
   }
 )
 
@@ -242,7 +236,10 @@ const canGroup = (a, b) => {
   return aBucket === bBucket
 }
 
-const getSpacingClass = (index, groupWithPrev) => {
+const getSpacingClass = (index, groupWithPrev, message) => {
+  if (isEmailConversation.value && !message.private && message.type !== 'activity') {
+    return index === 0 ? 'pt-0' : 'mt-0'
+  }
   if (index === 0) return 'pt-4'
   return groupWithPrev ? 'mt-1' : 'mt-4'
 }
@@ -270,7 +267,7 @@ const messageRows = computed(() => {
       message,
       groupWithPrev,
       groupWithNext,
-      spacingClass: getSpacingClass(index, groupWithPrev),
+      spacingClass: getSpacingClass(index, groupWithPrev, message),
       showDaySeparator:
         index === 0 ||
         !isSameDay(new Date(messages[index - 1].created_at), new Date(message.created_at))

@@ -4,8 +4,7 @@ import {
   filtersFromQuery,
   queryFromFilters,
   hasActiveFilters,
-  toFiltersJSON,
-  UNASSIGNED
+  toFiltersJSON
 } from './searchFilters'
 
 describe('searchFilters', () => {
@@ -13,37 +12,34 @@ describe('searchFilters', () => {
     const filters = {
       ...emptyFilters(),
       status: '2',
-      tags: ['3', '7'],
+      inbox: '3',
       created: '2026-01-01,2026-01-31'
     }
     expect(filtersFromQuery(queryFromFilters(filters))).toEqual(filters)
   })
 
-  it('drops empty values and junk tag ids from the query', () => {
+  it('ignores retired tag filters from old URLs', () => {
     expect(queryFromFilters(emptyFilters())).toEqual({})
-    expect(filtersFromQuery({ tags: 'a,0,-1,4,', status: '' }).tags).toEqual(['4'])
+    expect(filtersFromQuery({ tags: '4', status: '' })).toEqual(emptyFilters())
   })
 
   it('reports whether any filter is active', () => {
     expect(hasActiveFilters(emptyFilters())).toBe(false)
-    expect(hasActiveFilters({ ...emptyFilters(), tags: ['1'] })).toBe(true)
+    expect(hasActiveFilters({ ...emptyFilters(), tags: ['1'] })).toBe(false)
     expect(hasActiveFilters({ ...emptyFilters(), inbox: '5' })).toBe(true)
   })
 
-  it('serializes to the conversation list filter JSON', () => {
+  it('serializes mailbox filters and ignores retired assignment filters', () => {
     const json = toFiltersJSON({
       ...emptyFilters(),
       status: '1',
-      assignee: UNASSIGNED,
+      assignee: 'none',
       team: '9',
       tags: ['2', '5'],
       created: '2026-01-01,2026-01-31'
     })
     expect(JSON.parse(json)).toEqual([
       { model: 'conversations', field: 'status_id', operator: 'equals', value: '1' },
-      { model: 'conversations', field: 'assigned_user_id', operator: 'not set', value: '' },
-      { model: 'conversations', field: 'assigned_team_id', operator: 'equals', value: '9' },
-      { model: 'conversations', field: 'tags', operator: 'contains', value: '[2,5]' },
       {
         model: 'conversations',
         field: 'created_at',

@@ -1,6 +1,6 @@
 <template>
   <!-- Set fixed width only when not in fullscreen. -->
-  <div class="flex flex-col h-full" :class="{ 'max-h-[600px]': !isFullscreen }">
+  <div class="flex min-h-0 flex-col h-full" :class="{ 'max-h-[600px]': !isFullscreen }">
     <!-- Message type toggle -->
     <div
       class="flex items-center justify-between"
@@ -8,18 +8,10 @@
     >
       <Tabs v-model="messageType" class="rounded-lg">
         <TabsList>
-          <TabsTrigger
-            v-if="canSendReply"
-            value="reply"
-            class="max-md:py-2.5"
-          >
+          <TabsTrigger v-if="canSendReply" value="reply" class="max-md:py-2.5">
             {{ $t('globals.terms.reply') }}
           </TabsTrigger>
-          <TabsTrigger
-            v-if="canSendPrivateNote"
-            value="private_note"
-            class="max-md:py-2.5"
-          >
+          <TabsTrigger v-if="canSendPrivateNote" value="private_note" class="max-md:py-2.5">
             {{ $t('globals.terms.privateNote') }}
           </TabsTrigger>
         </TabsList>
@@ -84,13 +76,13 @@
     </div>
 
     <!-- Main tiptap editor -->
-    <div class="flex-grow flex flex-col overflow-hidden">
+    <div class="flex min-h-0 flex-grow flex-col overflow-hidden">
       <Editor
         ref="editorRef"
         v-model:htmlContent="htmlContent"
         v-model:textContent="textContent"
         :message-type="messageType"
-        :placeholder="isCramped ? t('globals.terms.typeMessage') : t('editor.hint.full')"
+        :placeholder="t('globals.terms.typeMessage')"
         :insertContent="insertContent"
         :autoFocus="true"
         :disabled="isDraftLoading"
@@ -99,21 +91,12 @@
         :enableInlineImages="conversationStore.current.inbox_channel === 'email'"
         :getSuggestions="getSuggestions"
         :getConversationSuggestions="getConversationSuggestions"
-        @aiGenerationChange="emit('aiGenerationChange', $event)"
         @send="handleSend"
         @mentionsChanged="handleMentionsChanged"
         @filesDropped="handleFilesDropped"
         @toggleMessageType="toggleMessageType"
       />
     </div>
-
-    <!-- Macro preview -->
-    <MacroActionsPreview
-      v-if="conversationStore.getMacro(MACRO_CONTEXT.REPLY)?.actions?.length > 0"
-      :actions="conversationStore.getMacro(MACRO_CONTEXT.REPLY).actions"
-      :onRemove="(action) => conversationStore.removeMacroAction(action, MACRO_CONTEXT.REPLY)"
-      class="mt-2"
-    />
 
     <!-- Attachments preview -->
     <ReplyBoxAttachmentPreview
@@ -126,14 +109,13 @@
 
     <!-- Editor menu bar with send button -->
     <ReplyBoxMenuBar
-      class="mt-2"
+      class="mt-2 shrink-0"
       :isFullscreen="isFullscreen"
       :handleFileUpload="handleFileUpload"
       :isSending="isSending"
       :enableSend="enableSend"
       :handleSend="handleSend"
       :handleSendAndSetStatus="handleSendAndSetStatus"
-      :isGenerating="isGenerating"
       :showGenerateReply="messageType !== 'private_note'"
       @emojiSelect="handleEmojiSelect"
       @generateReply="$emit('generateReply')"
@@ -148,22 +130,19 @@ const RECIPIENT_INPUT_CLASS =
 import { ref, computed, nextTick, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { EMITTER_EVENTS } from '@main/constants/emitterEvents.js'
-import { MACRO_CONTEXT } from '@main/constants/conversation'
+
 import { Maximize2, Minimize2 } from 'lucide-vue-next'
 import Editor from '@main/components/editor/ConversationEditor.vue'
 import { hasInlineImage, hasPendingInlineUpload } from '@main/composables/useInlineImageUpload'
 import { useConversationStore } from '@main/stores/conversation'
-import { useIsComposerCramped } from '@main/composables/useIsComposerCramped'
 import { Input } from '@shared-ui/components/ui/input'
 import { Button } from '@shared-ui/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@shared-ui/components/ui/tabs'
 import { useEmitter } from '@main/composables/useEmitter'
 import ReplyBoxAttachmentPreview from '@/features/conversation/message/attachment/ReplyBoxAttachmentPreview.vue'
-import MacroActionsPreview from '@/features/conversation/MacroActionsPreview.vue'
 import ReplyBoxMenuBar from '@/features/conversation/ReplyBoxMenuBar.vue'
 import { useI18n } from 'vue-i18n'
 import { validateEmail } from '@shared-ui/utils/string'
-import { useMacroStore } from '@main/stores/macro'
 import api from '@main/api'
 import {
   createLatestConversationSuggestionFetcher,
@@ -182,32 +161,24 @@ const emailErrors = defineModel('emailErrors', { default: () => [] })
 const htmlContent = defineModel('htmlContent', { default: '' })
 const textContent = defineModel('textContent', { default: '' })
 const mentions = defineModel('mentions', { default: () => [] })
-const macroStore = useMacroStore()
 
 // Get suggestions for the mention dropdown
 const fetchSuggestions = async (query) => {
-  // Mentions run their own query so typing here never disturbs the shared agent and team pickers.
-  const [agentsResponse, teamsResponse] = await Promise.all([
-    api.getUsersCompact({ q: query, page_size: MENTION_LIMIT, type: 'agent', enabled: true }),
-    api.getTeamsCompact({ q: query, page_size: MENTION_LIMIT })
-  ])
+  const agentsResponse = await api.getUsersCompact({
+    q: query,
+    page_size: MENTION_LIMIT,
+    type: 'agent',
+    enabled: true
+  })
 
-  const users = (agentsResponse?.data?.data || [])
-    .map((u) => ({
-      id: u.id,
-      type: 'agent',
-      label: `${u.first_name} ${u.last_name}`.trim(),
-      avatar_url: u.avatar_url
-    }))
-
-  const teams = (teamsResponse?.data?.data || []).map((t) => ({
-    id: t.id,
-    type: 'team',
-    label: t.name,
-    emoji: t.emoji
+  const users = (agentsResponse?.data?.data || []).map((u) => ({
+    id: u.id,
+    type: 'agent',
+    label: `${u.first_name} ${u.last_name}`.trim(),
+    avatar_url: u.avatar_url
   }))
 
-  return [...users, ...teams].slice(0, MENTION_LIMIT)
+  return users.slice(0, MENTION_LIMIT)
 }
 
 const debouncedFetchSuggestions = useDebounceFn(fetchSuggestions, MENTION_DEBOUNCE_MS)
@@ -217,7 +188,10 @@ const getSuggestions = async (query) => {
   return (await debouncedFetchSuggestions(query)) || []
 }
 
-const debouncedFetchConversationSuggestions = useDebounceFn(fetchConversationSuggestions, MENTION_DEBOUNCE_MS)
+const debouncedFetchConversationSuggestions = useDebounceFn(
+  fetchConversationSuggestions,
+  MENTION_DEBOUNCE_MS
+)
 const fetchLatestConversationSuggestions = createLatestConversationSuggestionFetcher(
   debouncedFetchConversationSuggestions
 )
@@ -235,7 +209,7 @@ const handleMentionsChanged = (newMentions) => {
 }
 
 const toggleMessageType = () => {
-  if (props.isGenerating || !props.canSendReply || !props.canSendPrivateNote) return
+  if (!props.canSendReply || !props.canSendPrivateNote) return
   messageType.value = messageType.value === 'private_note' ? 'reply' : 'private_note'
 }
 
@@ -262,10 +236,6 @@ const props = defineProps({
     required: false,
     default: false
   },
-  isGenerating: {
-    type: Boolean,
-    default: false
-  },
   canSendReply: {
     type: Boolean,
     required: true
@@ -283,13 +253,10 @@ const emit = defineEmits([
   'fileUpload',
   'inlineImageUpload',
   'fileDelete',
-  'filesDropped',
-  'aiGenerationChange',
-  'generateReply'
+  'filesDropped'
 ])
 
 const conversationStore = useConversationStore()
-const isCramped = useIsComposerCramped()
 const emitter = useEmitter()
 const { t } = useI18n()
 const insertContent = ref(null)
@@ -316,7 +283,6 @@ const enableSend = computed(() => {
     !hasPendingInlineUpload(html) &&
     (textContent.value.trim().length > 0 ||
       hasInlineImage(html) ||
-      conversationStore.getMacro('reply')?.actions?.length > 0 ||
       props.uploadedFiles.length > 0) &&
     emailErrors.value.length === 0 &&
     !props.uploadingFiles.length &&
@@ -391,27 +357,7 @@ const handleEmojiSelect = (emoji) => {
   // Force reactivity so the user can select the same emoji multiple times
   nextTick(() => (insertContent.value = emoji))
 }
-
-// Watch and update macro view based on message type this filters our macros.
-watch(
-  messageType,
-  (newType) => {
-    if (newType === 'reply') {
-      macroStore.setCurrentView('replying')
-    } else if (newType === 'private_note') {
-      macroStore.setCurrentView('adding_private_note')
-    }
-    // Focus editor on tab change
-    setTimeout(() => {
-      editorRef.value?.focus()
-    }, 50)
-  },
-  { immediate: true }
-)
-
-// Expose focus method for parent components
-const focus = () => {
-  editorRef.value?.focus()
-}
+const focus = () => editorRef.value?.focus()
+watch(messageType, () => nextTick(focus))
 defineExpose({ focus })
 </script>

@@ -10,12 +10,12 @@ BUILDSTR := ${VERSION} (\#${LAST_COMMIT} $(shell date -u +"%Y-%m-%dT%H:%M:%S%z")
 BIN := libredesk
 FRONTEND_DIR := frontend
 FRONTEND_DIST := ${FRONTEND_DIR}/dist
-STATIC := ${FRONTEND_DIST} i18n schema.sql static
+STATIC := ${FRONTEND_DIST}/main i18n schema.sql static
 GOPATH ?= $(HOME)/go
 STUFFBIN ?= $(GOPATH)/bin/stuffbin
 
 # The default target to run when `make` is executed.
-.DEFAULT_GOAL := build 
+.DEFAULT_GOAL := build
 
 # Install stuffbin if it doesn't exist.
 $(STUFFBIN):
@@ -28,9 +28,9 @@ install-deps: $(STUFFBIN)
 	@echo "→ Installing frontend dependencies..."
 	@cd ${FRONTEND_DIR} && pnpm install
 
-# Build the frontend for production (both apps).
+# Build the mailbox frontend for production.
 .PHONY: frontend-build
-frontend-build: frontend-build-main frontend-build-widget
+frontend-build: frontend-build-main
 
 # Build only the main frontend app.
 .PHONY: frontend-build-main
@@ -38,17 +38,11 @@ frontend-build-main: install-deps
 	@echo "→ Building main frontend app for production..."
 	@export VITE_APP_VERSION="${VERSION}" && cd ${FRONTEND_DIR} && pnpm build:main
 
-# Build only the widget frontend app.
-.PHONY: frontend-build-widget
-frontend-build-widget: install-deps
-	@echo "→ Building widget frontend app for production..."
-	@export VITE_APP_VERSION="${VERSION}" && cd ${FRONTEND_DIR} && pnpm build:widget
-
 # Run the Go backend server in development mode.
 .PHONY: run-backend
 run-backend:
 	@echo "→ Running backend..."
-	CGO_ENABLED=0 go run -ldflags="-s -w -X 'main.buildString=${BUILDSTR}' -X 'main.versionString=${VERSION}' -X 'github.com/abhinavxd/libredesk/internal/version.Version=${VERSION}' -X 'main.frontendDir=frontend/dist'" ./cmd/
+	CGO_ENABLED=0 go run -ldflags="-s -w -X 'main.buildString=${BUILDSTR}' -X 'main.versionString=${VERSION}' -X 'github.com/abhinavxd/libredesk/internal/version.Version=${VERSION}'" ./cmd/
 
 # Run the JS frontend server in development mode (main app only).
 .PHONY: run-frontend
@@ -66,21 +60,13 @@ run-frontend-main:
 	@echo "→ Running main frontend app..."
 	@export VITE_APP_VERSION="${VERSION}" && cd ${FRONTEND_DIR} && pnpm dev:main
 
-# Run the widget frontend app in development mode.
-.PHONY: run-frontend-widget
-run-frontend-widget:
-	@echo "→ Installing frontend dependencies (if not already installed)..."
-	@cd ${FRONTEND_DIR} && pnpm install
-	@echo "→ Running widget frontend app..."
-	@export VITE_APP_VERSION="${VERSION}" && cd ${FRONTEND_DIR} && pnpm dev:widget
-
 # Build the backend binary.
 .PHONY: build-backend
 build-backend: $(STUFFBIN)
 	@echo "→ Building backend..."
 	@CGO_ENABLED=0 go build \
 		-ldflags="-X 'main.buildString=${BUILDSTR}' -X 'main.versionString=${VERSION}' -X 'github.com/abhinavxd/libredesk/internal/version.Version=${VERSION}' -s -w" \
-		-o ${BIN} cmd/*.go
+		-o ${BIN} ./cmd
 
 # Main build target: builds both frontend and backend, then stuffs static assets into the binary.
 .PHONY: build

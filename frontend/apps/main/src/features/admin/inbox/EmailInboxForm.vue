@@ -76,21 +76,6 @@
       </FormItem>
     </FormField>
 
-    <FormField v-if="showFormFields" v-slot="{ componentField, handleChange }" name="csat_enabled">
-      <FormItem>
-        <SwitchField
-          :title="$t('admin.inbox.csatSurveys')"
-          :description="$t('admin.inbox.csatSurveys.description_1')"
-          :checked="componentField.modelValue"
-          @update:checked="handleChange"
-        />
-      </FormItem>
-      <p class="!mt-2 text-muted-foreground text-xs flex items-start gap-1.5">
-        <Lightbulb class="size-4" />
-        <span>{{ $t('admin.inbox.csatSurveys.description_2') }} {{ $t('admin.inbox.csatSurveys.description_3') }}</span>
-      </p>
-    </FormField>
-
     <FormField
       v-if="showFormFields"
       v-slot="{ componentField, handleChange }"
@@ -104,28 +89,10 @@
           :disabled="isMicrosoftInbox && componentField.modelValue"
           @update:checked="handleChange"
         />
-        <p
-          v-if="isMicrosoftInbox"
-          class="!mt-2 text-destructive text-xs flex items-start gap-1.5"
-        >
+        <p v-if="isMicrosoftInbox" class="!mt-2 text-destructive text-xs flex items-start gap-1.5">
           <Lightbulb class="size-4" />
           <span>{{ $t('admin.inbox.enablePlusAddressing.requiredForMicrosoft') }}</span>
         </p>
-      </FormItem>
-    </FormField>
-
-    <FormField
-      v-if="showFormFields"
-      v-slot="{ componentField, handleChange }"
-      name="prompt_tags_on_reply"
-    >
-      <FormItem>
-        <SwitchField
-          :title="$t('admin.inbox.promptTagsOnReply')"
-          :description="$t('admin.inbox.promptTagsOnReply.description')"
-          :checked="componentField.modelValue"
-          @update:checked="handleChange"
-        />
       </FormItem>
     </FormField>
 
@@ -176,10 +143,7 @@
     </div>
 
     <!-- OAuth Connected Status -->
-    <div
-      v-show="isOAuthInbox"
-      class="box p-4 bg-success/10 border-success/20"
-    >
+    <div v-show="isOAuthInbox" class="box p-4 bg-success/10 border-success/20">
       <div class="flex items-start justify-between">
         <div class="flex items-center space-x-3 flex-1">
           <CheckCircle2 class="w-5 h-5 text-success flex-shrink-0" />
@@ -188,10 +152,7 @@
               {{ $t('admin.inbox.oauth.connectedVia', { provider: oauthProvider }) }}
             </p>
             <p class="text-sm text-success">{{ oauthEmail }}</p>
-            <p
-              v-show="oauthClientId"
-              class="text-xs text-success font-mono mt-1"
-            >
+            <p v-show="oauthClientId" class="text-xs text-success font-mono mt-1">
               {{ $t('globals.terms.clientID') }}: {{ oauthClientId.substring(0, 20) }}...{{
                 oauthClientId.slice(-8)
               }}
@@ -892,7 +853,6 @@ const form = useForm({
     reply_to: '',
     enabled: true,
     csat_enabled: false,
-    prompt_tags_on_reply: false,
     enable_plus_addressing: true,
     auth_type: AUTH_TYPE_PASSWORD,
     imap: {

@@ -366,13 +366,6 @@ func (e *Email) processEnvelope(ctx context.Context, client *imapclient.Client, 
 	}
 
 	// Check if any contact with this email is blocked, if so, ignore the message.
-	if blocked, err := e.userStore.IsEmailBlocked(fromAddress); err != nil {
-		e.lo.Error("error checking if email is blocked", "email", fromAddress, "error", err)
-		return fmt.Errorf("checking if email is blocked: %w", err)
-	} else if blocked {
-		e.lo.Info("contact email is blocked dropping incoming email", "email", fromAddress)
-		return nil
-	}
 
 	e.lo.Debug("processing new incoming message", "message_id", messageID, "subject", env.Subject, "from", fromAddress, "inbox_id", inboxID)
 
@@ -667,42 +660,6 @@ func extractAllHTMLParts(part *enmime.Part) []string {
 	}
 
 	return htmlParts
-}
-
-// extractUUIDFromReplyAddress extracts a UUID from the reply address if present.
-// The UUID is expected to be in the format "username+<UUID>@domain" within the email address.
-// Returns an empty string if the UUID is not found or invalid.
-func (e *Email) extractUUIDFromReplyAddress(address string) string {
-	// Remove angle brackets if present
-	address = strings.Trim(address, "<>")
-
-	// Check if it contains +
-	if !strings.Contains(address, "+") {
-		return ""
-	}
-
-	// Extract the part between + and @
-	parts := strings.Split(address, "@")
-	if len(parts) != 2 {
-		return ""
-	}
-
-	// Get the UUID
-	uuid := strings.SplitN(parts[0], "+", 2)[1]
-	if uuid == "" {
-		return ""
-	}
-
-	// Validate UUID format (36 chars with hyphens at specific positions)
-	if len(uuid) == 36 &&
-		uuid[8] == '-' &&
-		uuid[13] == '-' &&
-		uuid[18] == '-' &&
-		uuid[23] == '-' {
-		return uuid
-	}
-
-	return ""
 }
 
 // extractMessageIDFromHeaders extracts and cleans the Message-ID from email headers.

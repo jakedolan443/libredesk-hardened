@@ -1,30 +1,71 @@
 <template>
-  <div class="mb-1 text-xs space-y-1">
-    <p v-if="message.meta.subject" class="text-foreground">
-      {{ message.meta.subject }}
-    </p>
-    <div class="space-y-0.5">
-      <p v-if="message.meta.from?.length">
-        <span class="text-muted-foreground">From:</span> {{ message.meta.from.join(', ') }}
-      </p>
-      <p v-if="message.meta.to?.length">
-        <span class="text-muted-foreground">To:</span> {{ message.meta.to.join(', ') }}
-      </p>
-      <p v-if="message.meta.cc?.length">
-        <span class="text-muted-foreground">Cc:</span> {{ message.meta.cc.join(', ') }}
-      </p>
-      <p v-if="message.meta.bcc?.length">
-        <span class="text-muted-foreground">Bcc:</span> {{ message.meta.bcc.join(', ') }}
-      </p>
-    </div>
+  <div class="email-envelope mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+    <span v-if="subject" class="basis-full text-foreground font-medium">
+      {{ subject }}
+    </span>
+    <span class="whitespace-nowrap">
+      <span class="text-muted-foreground">From:</span> {{ from.join(', ') || '—' }}
+    </span>
+    <span class="whitespace-nowrap">
+      <span class="text-muted-foreground">To:</span> {{ to.join(', ') || '—' }}
+    </span>
+    <span v-if="cc.length" class="whitespace-nowrap">
+      <span class="text-muted-foreground">Cc:</span> {{ cc.join(', ') }}
+    </span>
+    <span v-if="bcc.length" class="whitespace-nowrap">
+      <span class="text-muted-foreground">Bcc:</span> {{ bcc.join(', ') }}
+    </span>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+import { useConversationStore } from '@main/stores/conversation'
+
+const conversationStore = useConversationStore()
+
+const props = defineProps({
   message: {
     type: Object,
     required: true
   }
 })
+
+const meta = computed(() => props.message.meta || {})
+const currentConversation = computed(() => conversationStore.current || {})
+
+const asList = (value) => (Array.isArray(value) ? value.filter(Boolean) : [])
+
+const subject = computed(() => meta.value.subject || currentConversation.value.subject || '')
+
+const from = computed(() => {
+  const explicitFrom = asList(meta.value.from)
+  if (explicitFrom.length) return explicitFrom
+
+  if (props.message.type === 'incoming') {
+    return [props.message.author?.email, currentConversation.value.correspondent?.email].filter(
+      Boolean
+    )
+  }
+
+  return [currentConversation.value.inbox_mail || currentConversation.value.inbox_reply_to].filter(
+    Boolean
+  )
+})
+
+const to = computed(() => {
+  const explicitTo = asList(meta.value.to)
+  if (explicitTo.length) return explicitTo
+
+  if (props.message.type === 'incoming') {
+    return [
+      currentConversation.value.inbox_mail || currentConversation.value.inbox_reply_to
+    ].filter(Boolean)
+  }
+
+  return [currentConversation.value.correspondent?.email].filter(Boolean)
+})
+
+const cc = computed(() => asList(meta.value.cc))
+const bcc = computed(() => asList(meta.value.bcc))
 </script>

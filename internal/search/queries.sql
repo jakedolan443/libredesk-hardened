@@ -27,25 +27,19 @@ SELECT
     assignee.avatar_url AS "assignee.avatar_url",
     teams.name AS team_name,
     cs.name AS status,
-    cp.name AS priority,
     inboxes.name AS inbox_name,
     inboxes.channel AS inbox_channel,
     users.first_name AS "contact.first_name",
     users.last_name AS "contact.last_name",
     users.email AS "contact.email",
-    users.avatar_url AS "contact.avatar_url",
-    COALESCE(
-        (SELECT ARRAY_AGG(tags.name ORDER BY tags.name) FROM conversation_tags JOIN tags ON tags.id = conversation_tags.tag_id WHERE conversation_tags.conversation_id = conversations.id),
-        '{}'
-    ) AS tags
+    users.avatar_url AS "contact.avatar_url"
 FROM conversations
 JOIN users ON conversations.contact_id = users.id
 LEFT JOIN users assignee ON conversations.assigned_user_id = assignee.id
 LEFT JOIN teams ON conversations.assigned_team_id = teams.id
 LEFT JOIN inboxes ON conversations.inbox_id = inboxes.id
 LEFT JOIN conversation_statuses cs ON conversations.status_id = cs.id
-LEFT JOIN conversation_priorities cp ON conversations.priority_id = cp.id
-WHERE conversations.id IN (SELECT id FROM matched_conversations)
+WHERE inboxes.channel = 'email' AND conversations.id IN (SELECT id FROM matched_conversations)
   AND $3
   AND (
        $4
@@ -82,7 +76,6 @@ SELECT
     assignee.avatar_url AS "assignee.avatar_url",
     teams.name AS team_name,
     cs.name AS conversation_status,
-    cp.name AS priority,
     inboxes.name AS inbox_name,
     inboxes.channel AS inbox_channel,
     users.first_name AS "contact.first_name",
@@ -97,8 +90,7 @@ LEFT JOIN users assignee ON conversations.assigned_user_id = assignee.id
 LEFT JOIN teams ON conversations.assigned_team_id = teams.id
 LEFT JOIN inboxes ON conversations.inbox_id = inboxes.id
 LEFT JOIN conversation_statuses cs ON conversations.status_id = cs.id
-LEFT JOIN conversation_priorities cp ON conversations.priority_id = cp.id
-WHERE conversation_messages.type != 'activity'
+WHERE inboxes.channel = 'email' AND conversation_messages.type != 'activity'
   AND conversation_messages.text_content ILIKE $10 ESCAPE '\'
   AND $3
   AND (
@@ -108,17 +100,3 @@ WHERE conversation_messages.type != 'activity'
     OR ($7 AND conversations.assigned_team_id = ANY($9::int[]) AND conversations.assigned_user_id IS NULL)
     OR ($8 AND conversations.assigned_user_id IS NULL AND conversations.assigned_team_id IS NULL)
   )
-
--- name: search-contacts
-SELECT
-    id,
-    created_at,
-    first_name,
-    last_name,
-    email,
-    external_user_id
-FROM users
-WHERE type = 'contact'
-AND deleted_at IS NULL
-AND email ILIKE $1 ESCAPE '\'
-LIMIT $2;

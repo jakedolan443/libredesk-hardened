@@ -1,6 +1,6 @@
 <template>
   <div
-    class="editor-wrapper flex flex-col h-full overflow-y-auto"
+    class="editor-wrapper flex min-h-0 flex-col h-full overflow-hidden"
     :class="{ 'pointer-events-none': disabled }"
   >
     <BubbleMenu
@@ -10,14 +10,9 @@
       :should-show="shouldShowBubble"
       class="bg-background p-1 box will-change-transform"
     >
-      <EditorToolbar
-        :editor="editor"
-        show-ai
-        @open-link="linkDialog?.open()"
-        @ai-generation-change="emit('aiGenerationChange', $event)"
-      />
+      <EditorToolbar :editor="editor" @open-link="linkDialog?.open()" />
     </BubbleMenu>
-    <EditorContent :editor="editor" class="native-html" />
+    <EditorContent :editor="editor" class="native-html min-h-0 flex-1 overflow-y-auto" />
 
     <EditorLinkDialog ref="linkDialog" :editor="editor" :allow-button="false" />
   </div>
@@ -50,13 +45,7 @@ const props = defineProps({
   linkedModel: { type: String, default: 'messages' }
 })
 
-const emit = defineEmits([
-  'send',
-  'aiGenerationChange',
-  'mentionsChanged',
-  'filesDropped',
-  'toggleMessageType'
-])
+const emit = defineEmits(['send', 'mentionsChanged', 'filesDropped', 'toggleMessageType'])
 
 const linkDialog = ref(null)
 

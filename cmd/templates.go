@@ -15,7 +15,7 @@ func handleGetTemplates(r *fastglue.Request) error {
 		app = r.Context.(*App)
 		typ = string(r.RequestCtx.QueryArgs().Peek("type"))
 	)
-	if typ == "" {
+	if typ != "email_outgoing" {
 		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.Ts("globals.messages.empty", "name", "`type`"), nil, envelope.InputError)
 	}
 	t, err := app.tmpl.GetAll(typ)
@@ -53,7 +53,7 @@ func handleCreateTemplate(r *fastglue.Request) error {
 	if req.Name == "" {
 		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.Ts("globals.messages.empty", "name", "`name`"), nil, envelope.InputError)
 	}
-	if req.Type == "" {
+	if req.Type != "email_outgoing" {
 		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.Ts("globals.messages.empty", "name", "`type`"), nil, envelope.InputError)
 	}
 	template, err := app.tmpl.Create(req)
@@ -80,7 +80,7 @@ func handleUpdateTemplate(r *fastglue.Request) error {
 	if req.Name == "" {
 		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.Ts("globals.messages.empty", "name", "`name`"), nil, envelope.InputError)
 	}
-	if req.Type == "" {
+	if req.Type != "email_outgoing" {
 		return r.SendErrorEnvelope(fasthttp.StatusBadRequest, app.i18n.Ts("globals.messages.empty", "name", "`type`"), nil, envelope.InputError)
 	}
 	updatedTemplate, err := app.tmpl.Update(id, req)

@@ -1,24 +1,14 @@
 import { ref, watch } from 'vue'
 import { useDebounceFn, useEventListener } from '@vueuse/core'
 import { useConversationStore } from '@main/stores/conversation'
-import { MACRO_CONTEXT } from '@main/constants/conversation'
 import { getTextFromHTML } from '@shared-ui/utils/string.js'
 import api from '@main/api'
 
-const hasKeys = (obj, keys) => Boolean(obj) && keys.every(key => key in obj)
-
-const validateMacroActions = (actions) => {
-  if (!Array.isArray(actions)) return []
-  return actions.filter(action =>
-    hasKeys(action, ['type', 'value', 'display_value']) &&
-    Array.isArray(action.value) &&
-    Array.isArray(action.display_value)
-  )
-}
+const hasKeys = (obj, keys) => Boolean(obj) && keys.every((key) => key in obj)
 
 const validateAttachments = (attachments) => {
   if (!Array.isArray(attachments)) return []
-  return attachments.filter(attachment =>
+  return attachments.filter((attachment) =>
     hasKeys(attachment, ['id', 'size', 'uuid', 'filename', 'content_type'])
   )
 }
@@ -28,32 +18,29 @@ const isDraftEmpty = (draft) => {
   const hasText = getTextFromHTML(content).length > 0
   const hasInlineImage = /<img\b/i.test(content)
   const hasAttachments = draft?.meta?.attachments?.length > 0
-  const hasMacroActions = draft?.meta?.macro_actions?.length > 0
-  return !hasText && !hasInlineImage && !hasAttachments && !hasMacroActions
+  return !hasText && !hasInlineImage && !hasAttachments
 }
 
 const draftKey = (uuid, type) => `${uuid}::${type}`
 
 const metaSignature = (meta) =>
   JSON.stringify({
-    macro_id: meta?.macro_id || 0,
-    macro_actions: meta?.macro_actions || [],
-    attachments: (meta?.attachments || []).map(a => a.uuid)
+    attachments: (meta?.attachments || []).map((a) => a.uuid)
   })
 
 const sameDraft = (a, b) => {
   if (isDraftEmpty(a) && isDraftEmpty(b)) return true
-  return (a?.content || '') === (b?.content || '') && metaSignature(a?.meta) === metaSignature(b?.meta)
+  return (
+    (a?.content || '') === (b?.content || '') && metaSignature(a?.meta) === metaSignature(b?.meta)
+  )
 }
 
-export function useDraftManager (conversationUUID, messageType, uploadedFiles = null) {
+export function useDraftManager(conversationUUID, messageType, uploadedFiles = null) {
   const conversationStore = useConversationStore()
   const htmlContent = ref('')
   const textContent = ref('')
   const isLoading = ref(false)
   const loadedAttachments = ref([])
-  const loadedMacroActions = ref([])
-  const loadedMacroID = ref(0)
 
   // Live-key guard: the editor is transiently empty during open/switch and must not clobber a stored draft.
   const loadedKey = ref(null)
@@ -61,12 +48,8 @@ export function useDraftManager (conversationUUID, messageType, uploadedFiles = 
 
   const buildDraft = () => {
     const meta = {}
-    const macro = conversationStore.getMacro(MACRO_CONTEXT.REPLY)
-    const macroActions = macro?.actions || []
-    if (macro?.id > 0) meta.macro_id = macro.id
-    if (macroActions.length > 0) meta.macro_actions = macroActions
     if (uploadedFiles?.value?.length > 0) {
-      meta.attachments = uploadedFiles.value.map(file => ({
+      meta.attachments = uploadedFiles.value.map((file) => ({
         id: file.id,
         url: file.url,
         size: file.size,
@@ -83,8 +66,6 @@ export function useDraftManager (conversationUUID, messageType, uploadedFiles = 
     htmlContent.value = draft?.content || ''
     textContent.value = ''
     loadedAttachments.value = validateAttachments(draft?.meta?.attachments)
-    loadedMacroActions.value = validateMacroActions(draft?.meta?.macro_actions)
-    loadedMacroID.value = Number(draft?.meta?.macro_id) > 0 ? Number(draft.meta.macro_id) : 0
   }
 
   const load = async (uuid, type) => {
@@ -131,11 +112,7 @@ export function useDraftManager (conversationUUID, messageType, uploadedFiles = 
     if (uuid === conversationUUID.value && type === messageType.value) applyDraft(null)
   }
 
-  const watchSources = [
-    htmlContent,
-    textContent,
-    () => conversationStore.macros[MACRO_CONTEXT.REPLY]
-  ]
+  const watchSources = [htmlContent, textContent]
   if (uploadedFiles) watchSources.push(uploadedFiles)
 
   watch(
@@ -152,17 +129,23 @@ export function useDraftManager (conversationUUID, messageType, uploadedFiles = 
     [conversationUUID, messageType],
     ([uuid, type], oldVals) => {
       const [prevUuid, prevType] = oldVals || []
-      chain = chain.then(async () => {
-        if (prevUuid && loadedKey.value === draftKey(prevUuid, prevType)) save(prevUuid, prevType)
-        if (uuid) await load(uuid, type)
-        else applyDraft(null)
-      }).catch(() => {})
+      chain = chain
+        .then(async () => {
+          if (prevUuid && loadedKey.value === draftKey(prevUuid, prevType)) save(prevUuid, prevType)
+          if (uuid) await load(uuid, type)
+          else applyDraft(null)
+        })
+        .catch(() => {})
     },
     { immediate: true }
   )
 
   useEventListener(document, 'visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && conversationUUID.value && loadedKey.value === currentKey()) {
+    if (
+      document.visibilityState === 'hidden' &&
+      conversationUUID.value &&
+      loadedKey.value === currentKey()
+    ) {
       save(conversationUUID.value, messageType.value)
     }
   })
@@ -172,8 +155,6 @@ export function useDraftManager (conversationUUID, messageType, uploadedFiles = 
     textContent,
     isLoading,
     clearDraft,
-    loadedAttachments,
-    loadedMacroActions,
-    loadedMacroID
+    loadedAttachments
   }
 }

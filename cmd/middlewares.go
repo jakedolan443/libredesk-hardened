@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -223,14 +224,22 @@ func notAuthPage(handler fastglue.FastRequestHandler) fastglue.FastRequestHandle
 		// Validate session.
 		user, err := app.auth.ValidateSession(r)
 		if err != nil {
-			app.lo.Error("error validating session", "error", err)
-			return r.SendErrorEnvelope(http.StatusUnauthorized, app.i18n.T("auth.invalidOrExpiredSessionClearCookie"), nil, envelope.GeneralError)
+			if !errors.Is(err, simplesessions.ErrInvalidSession) {
+				app.lo.Error("error validating session", "error", err)
+				return r.SendErrorEnvelope(http.StatusUnauthorized, app.i18n.T("globals.messages.somethingWentWrong"), nil, envelope.GeneralError)
+			}
+			// A stale browser cookie must not prevent access to the sign-in page.
+			if err := app.auth.DestroySession(r); err != nil {
+				app.lo.Error("error clearing expired session", "error", err)
+				return sendErrorEnvelope(r, err)
+			}
+			return handler(r)
 		}
 
 		if user.ID != 0 {
 			nextURI := string(r.RequestCtx.QueryArgs().Peek("next"))
 			if nextURI == "" {
-				nextURI = "/inboxes/assigned"
+				nextURI = "/inboxes/all"
 			}
 			return r.RedirectURI(nextURI, fasthttp.StatusFound, nil, "")
 		}

@@ -5,7 +5,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/abhinavxd/libredesk/internal/resourcepolicy"
 	rmodels "github.com/abhinavxd/libredesk/internal/role/models"
 	tmodels "github.com/abhinavxd/libredesk/internal/team/models"
 	"github.com/lib/pq"
@@ -20,7 +19,6 @@ const (
 	// User types
 	UserTypeAgent       = "agent"
 	UserTypeContact     = "contact"
-	UserTypeVisitor     = "visitor"
 	UserTypeAIAssistant = "ai_assistant"
 
 	// User availability statuses
@@ -31,16 +29,6 @@ const (
 	// Away due to manual setting from sidebar
 	AwayManual         = "away_manual"
 	AwayAndReassigning = "away_and_reassigning"
-)
-
-// ContactPolicy controls whether contact resolution may modify a matched contact.
-type ContactPolicy int
-
-const (
-	// ContactReuse resolves to the existing contact without modifying it.
-	ContactReuse ContactPolicy = iota
-	// ContactSync also updates name/email and enriches external_user_id on a match.
-	ContactSync
 )
 
 type UserCompact struct {
@@ -93,32 +81,6 @@ type User struct {
 	APIKey           null.String `db:"api_key" json:"api_key"`
 	APIKeyLastUsedAt null.Time   `db:"api_key_last_used_at" json:"api_key_last_used_at"`
 	APISecret        null.String `db:"api_secret" json:"-"`
-}
-
-// ChatUser is a user with limited fields for live chat.
-type ChatUser struct {
-	ID                 int         `db:"id" json:"id"`
-	FirstName          string      `db:"first_name" json:"first_name"`
-	LastName           string      `db:"last_name" json:"last_name"`
-	AvatarURL          null.String `db:"avatar_url" json:"avatar_url"`
-	AvailabilityStatus string      `db:"availability_status" json:"availability_status"`
-	Type               string      `db:"type" json:"type"`
-	ActiveAt           null.Time   `db:"active_at" json:"active_at"`
-	Expectation        string      `db:"expectation" json:"expectation,omitempty"`
-}
-
-type Note struct {
-	Display resourcepolicy.Display `db:"-" json:"display"`
-
-	ID        int         `db:"id" json:"id"`
-	CreatedAt time.Time   `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time   `db:"updated_at" json:"updated_at"`
-	ContactID int         `db:"contact_id" json:"contact_id"`
-	Note      string      `db:"note" json:"note"`
-	UserID    int         `db:"user_id" json:"user_id"`
-	FirstName string      `db:"first_name" json:"first_name"`
-	LastName  string      `db:"last_name" json:"last_name"`
-	AvatarURL null.String `db:"avatar_url" json:"avatar_url"`
 }
 
 type OfflineUser struct {

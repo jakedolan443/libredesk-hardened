@@ -8,8 +8,7 @@ import (
 	"github.com/abhinavxd/libredesk/internal/attachment"
 	mmodels "github.com/abhinavxd/libredesk/internal/media/models"
 	"github.com/abhinavxd/libredesk/internal/resourcepolicy"
-	"github.com/abhinavxd/libredesk/internal/stringutil"
-	umodels "github.com/abhinavxd/libredesk/internal/user/models"
+
 	"github.com/lib/pq"
 	"github.com/volatiletech/null/v9"
 )
@@ -53,66 +52,12 @@ var (
 	ActivityAssigneeUserRemoved = "assignee_user_removed"
 	ActivitySelfAssign          = "self_assign"
 	ActivitySelfUnassign        = "self_unassign"
-	ActivityTagAdded            = "tag_added"
-	ActivityTagRemoved          = "tag_removed"
 	ActivitySLASet              = "sla_set"
 	ActivityParticipantAdded    = "participant_added"
 
 	ContentTypeText = "text"
 	ContentTypeHTML = "html"
 )
-
-type ContinuityConversation struct {
-	ID                        int         `db:"id"`
-	UUID                      string      `db:"uuid"`
-	ContactID                 int         `db:"contact_id"`
-	InboxID                   int         `db:"inbox_id"`
-	ContactLastSeenAt         time.Time   `db:"contact_last_seen_at"`
-	LastContinuityEmailSentAt null.Time   `db:"last_continuity_email_sent_at"`
-	ContactEmail              null.String `db:"contact_email"`
-	ContactFirstName          null.String `db:"contact_first_name"`
-	ContactLastName           null.String `db:"contact_last_name"`
-	LinkedEmailInboxID        null.Int    `db:"linked_email_inbox_id"`
-	ReferenceNumber           string      `db:"reference_number"`
-	ContinuityEmailSubject    null.String `db:"continuity_email_subject"`
-}
-
-type ContinuityUnreadMessage struct {
-	Message
-	SenderFirstName null.String `db:"sender.first_name"`
-	SenderLastName  null.String `db:"sender.last_name"`
-	SenderType      string      `db:"sender.type"`
-	AttachmentNames string      `db:"attachment_names"`
-}
-
-type LastChatMessage struct {
-	Content   string           `db:"content" json:"content"`
-	CreatedAt time.Time        `db:"created_at" json:"created_at"`
-	Author    umodels.ChatUser `db:"author" json:"author"`
-}
-
-type ChatConversation struct {
-	CreatedAt          time.Time         `db:"created_at" json:"created_at"`
-	UUID               string            `db:"uuid" json:"uuid"`
-	Status             string            `db:"status" json:"status"`
-	LastChatMessage    LastChatMessage   `db:"last_message" json:"last_message"`
-	UnreadMessageCount int               `db:"unread_message_count" json:"unread_message_count"`
-	Assignee           *umodels.ChatUser `db:"assignee" json:"assignee"`
-}
-
-type ChatMessage struct {
-	Display          resourcepolicy.Display `json:"display"`
-	ContentType      string                 `json:"content_type"`
-	UUID             string                 `json:"uuid"`
-	Status           string                 `json:"status"`
-	ConversationUUID string                 `json:"conversation_uuid"`
-	CreatedAt        time.Time              `json:"created_at"`
-	Content          string                 `json:"content"`
-	TextContent      string                 `json:"text_content"`
-	Author           MessageAuthor          `json:"author"`
-	Attachments      attachment.Attachments `json:"attachments"`
-	Meta             json.RawMessage        `json:"meta"`
-}
 
 // ConversationListItem represents a conversation in list views
 type ConversationListItem struct {
@@ -123,10 +68,10 @@ type ConversationListItem struct {
 	UUID                  string                  `db:"uuid" json:"uuid"`
 	ReferenceNumber       string                  `db:"reference_number" json:"reference_number"`
 	WaitingSince          null.Time               `db:"waiting_since" json:"waiting_since"`
-	Contact               ConversationListContact `db:"contact" json:"contact"`
+	Contact               ConversationListContact `db:"contact" json:"correspondent"`
 	InboxChannel          string                  `db:"inbox_channel" json:"inbox_channel"`
 	InboxName             string                  `db:"inbox_name" json:"inbox_name"`
-	SLAPolicyID           null.Int                `db:"sla_policy_id" json:"sla_policy_id"`
+	SLAPolicyID           null.Int                `db:"sla_policy_id" json:"-"`
 	FirstReplyAt          null.Time               `db:"first_reply_at" json:"first_reply_at"`
 	LastReplyAt           null.Time               `db:"last_reply_at" json:"last_reply_at"`
 	ResolvedAt            null.Time               `db:"resolved_at" json:"resolved_at"`
@@ -137,18 +82,18 @@ type ConversationListItem struct {
 	LastInteraction       null.String             `db:"last_interaction" json:"last_interaction"`
 	LastInteractionAt     null.Time               `db:"last_interaction_at" json:"last_interaction_at"`
 	LastInteractionSender null.String             `db:"last_interaction_sender" json:"last_interaction_sender"`
-	NextSLADeadlineAt     null.Time               `db:"next_sla_deadline_at" json:"next_sla_deadline_at"`
-	PriorityID            null.Int                `db:"priority_id" json:"priority_id"`
-	AssignedUserID        null.Int                `db:"assigned_user_id" json:"assigned_user_id"`
-	AssignedTeamID        null.Int                `db:"assigned_team_id" json:"assigned_team_id"`
+	NextSLADeadlineAt     null.Time               `db:"next_sla_deadline_at" json:"-"`
+	PriorityID            null.Int                `db:"priority_id" json:"-"`
+	AssignedUserID        null.Int                `db:"assigned_user_id" json:"-"`
+	AssignedTeamID        null.Int                `db:"assigned_team_id" json:"-"`
 	UnreadMessageCount    int                     `db:"unread_message_count" json:"unread_message_count"`
 	Status                null.String             `db:"status" json:"status"`
-	Priority              null.String             `db:"priority" json:"priority"`
-	FirstResponseDueAt    null.Time               `db:"first_response_deadline_at" json:"first_response_deadline_at"`
-	ResolutionDueAt       null.Time               `db:"resolution_deadline_at" json:"resolution_deadline_at"`
-	AppliedSLAID          null.Int                `db:"applied_sla_id" json:"applied_sla_id"`
-	NextResponseDueAt     null.Time               `db:"next_response_deadline_at" json:"next_response_deadline_at"`
-	NextResponseMetAt     null.Time               `db:"next_response_met_at" json:"next_response_met_at"`
+	Priority              null.String             `db:"priority" json:"-"`
+	FirstResponseDueAt    null.Time               `db:"first_response_deadline_at" json:"-"`
+	ResolutionDueAt       null.Time               `db:"resolution_deadline_at" json:"-"`
+	AppliedSLAID          null.Int                `db:"applied_sla_id" json:"-"`
+	NextResponseDueAt     null.Time               `db:"next_response_deadline_at" json:"-"`
+	NextResponseMetAt     null.Time               `db:"next_response_met_at" json:"-"`
 	MentionedMessageUUID  null.String             `db:"mentioned_message_uuid" json:"mentioned_message_uuid"`
 }
 
@@ -173,21 +118,21 @@ type Conversation struct {
 	CreatedAt                 time.Time              `db:"created_at" json:"created_at"`
 	UpdatedAt                 time.Time              `db:"updated_at" json:"updated_at"`
 	UUID                      string                 `db:"uuid" json:"uuid"`
-	ContactID                 int                    `db:"contact_id" json:"contact_id"`
+	ContactID                 int                    `db:"contact_id" json:"-"`
 	InboxID                   int                    `db:"inbox_id" json:"inbox_id"`
 	ClosedAt                  null.Time              `db:"closed_at" json:"closed_at"`
 	ResolvedAt                null.Time              `db:"resolved_at" json:"resolved_at"`
-	ContactLastSeenAt         null.Time              `db:"contact_last_seen_at" json:"contact_last_seen_at"`
+	ContactLastSeenAt         null.Time              `db:"contact_last_seen_at" json:"-"`
 	ReferenceNumber           string                 `db:"reference_number" json:"reference_number"`
-	Priority                  null.String            `db:"priority" json:"priority"`
-	PriorityID                null.Int               `db:"priority_id" json:"priority_id"`
+	Priority                  null.String            `db:"priority" json:"-"`
+	PriorityID                null.Int               `db:"priority_id" json:"-"`
 	Status                    null.String            `db:"status" json:"status"`
 	StatusCategory            null.String            `db:"status_category" json:"status_category"`
 	StatusID                  null.Int               `db:"status_id" json:"status_id"`
 	FirstReplyAt              null.Time              `db:"first_reply_at" json:"first_reply_at"`
 	LastReplyAt               null.Time              `db:"last_reply_at" json:"last_reply_at"`
-	AssignedUserID            null.Int               `db:"assigned_user_id" json:"assigned_user_id"`
-	AssignedTeamID            null.Int               `db:"assigned_team_id" json:"assigned_team_id"`
+	AssignedUserID            null.Int               `db:"assigned_user_id" json:"-"`
+	AssignedTeamID            null.Int               `db:"assigned_team_id" json:"-"`
 	WaitingSince              null.Time              `db:"waiting_since" json:"waiting_since"`
 	SnoozedUntil              null.Time              `db:"snoozed_until" json:"snoozed_until"`
 	Subject                   null.String            `db:"subject" json:"subject"`
@@ -195,57 +140,46 @@ type Conversation struct {
 	InboxReplyTo              string                 `db:"inbox_reply_to" json:"inbox_reply_to"`
 	InboxName                 string                 `db:"inbox_name" json:"inbox_name"`
 	InboxChannel              string                 `db:"inbox_channel" json:"inbox_channel"`
-	Tags                      null.JSON              `db:"tags" json:"tags"`
 	Meta                      json.RawMessage        `db:"meta" json:"meta"`
 	LatestIncomingRecipient   string                 `db:"latest_incoming_recipient" json:"-"`
-	CustomAttributes          json.RawMessage        `db:"custom_attributes" json:"custom_attributes"`
+	CustomAttributes          json.RawMessage        `db:"custom_attributes" json:"-"`
 	LastMessageAt             null.Time              `db:"last_message_at" json:"last_message_at"`
 	LastMessage               null.String            `db:"last_message" json:"last_message"`
 	LastMessageSender         null.String            `db:"last_message_sender" json:"last_message_sender"`
 	LastInteraction           null.String            `db:"last_interaction" json:"last_interaction"`
 	LastInteractionAt         null.Time              `db:"last_interaction_at" json:"last_interaction_at"`
 	LastInteractionSender     null.String            `db:"last_interaction_sender" json:"last_interaction_sender"`
-	Contact                   ConversationContact    `db:"contact" json:"contact"`
-	SLAPolicyID               null.Int               `db:"sla_policy_id" json:"sla_policy_id"`
-	SlaPolicyName             null.String            `db:"sla_policy_name" json:"sla_policy_name"`
-	AppliedSLAID              null.Int               `db:"applied_sla_id" json:"applied_sla_id"`
-	NextSLADeadlineAt         null.Time              `db:"next_sla_deadline_at" json:"next_sla_deadline_at"`
-	FirstResponseDueAt        null.Time              `db:"first_response_deadline_at" json:"first_response_deadline_at"`
-	ResolutionDueAt           null.Time              `db:"resolution_deadline_at" json:"resolution_deadline_at"`
-	NextResponseDueAt         null.Time              `db:"next_response_deadline_at" json:"next_response_deadline_at"`
-	NextResponseMetAt         null.Time              `db:"next_response_met_at" json:"next_response_met_at"`
+	Contact                   ConversationContact    `db:"contact" json:"correspondent"`
+	SLAPolicyID               null.Int               `db:"sla_policy_id" json:"-"`
+	SlaPolicyName             null.String            `db:"sla_policy_name" json:"-"`
+	AppliedSLAID              null.Int               `db:"applied_sla_id" json:"-"`
+	NextSLADeadlineAt         null.Time              `db:"next_sla_deadline_at" json:"-"`
+	FirstResponseDueAt        null.Time              `db:"first_response_deadline_at" json:"-"`
+	ResolutionDueAt           null.Time              `db:"resolution_deadline_at" json:"-"`
+	NextResponseDueAt         null.Time              `db:"next_response_deadline_at" json:"-"`
+	NextResponseMetAt         null.Time              `db:"next_response_met_at" json:"-"`
 	LastContinuityEmailSentAt null.Time              `db:"last_continuity_email_sent_at" json:"-"`
-	CSATRating                null.Int               `db:"csat_rating" json:"csat_rating"`
-	CSATFeedback              null.String            `db:"csat_feedback" json:"csat_feedback"`
-	CSATRespondedAt           null.Time              `db:"csat_responded_at" json:"csat_responded_at"`
-	PreviousConversations     []PreviousConversation `db:"-" json:"previous_conversations"`
+	CSATRating                null.Int               `db:"csat_rating" json:"-"`
+	CSATFeedback              null.String            `db:"csat_feedback" json:"-"`
+	CSATRespondedAt           null.Time              `db:"csat_responded_at" json:"-"`
+	PreviousConversations     []PreviousConversation `db:"-" json:"-"`
 }
 
 type ConversationContact struct {
-	ID                     int             `db:"id" json:"id"`
-	CreatedAt              time.Time       `db:"created_at" json:"created_at"`
-	UpdatedAt              time.Time       `db:"updated_at" json:"updated_at"`
-	FirstName              string          `db:"first_name" json:"first_name"`
-	LastName               string          `db:"last_name" json:"last_name"`
-	Email                  null.String     `db:"email" json:"email"`
-	Type                   string          `db:"type" json:"type"`
-	AvailabilityStatus     string          `db:"availability_status" json:"availability_status"`
-	AvatarURL              null.String     `db:"avatar_url" json:"avatar_url"`
-	PhoneNumber            null.String     `db:"phone_number" json:"phone_number"`
-	PhoneNumberCountryCode null.String     `db:"phone_number_country_code" json:"phone_number_country_code"`
-	Country                null.String     `db:"country" json:"country"`
-	CustomAttributes       json.RawMessage `db:"custom_attributes" json:"custom_attributes"`
-	Enabled                bool            `db:"enabled" json:"enabled"`
-	LastActiveAt           null.Time       `db:"last_active_at" json:"last_active_at"`
-	LastLoginAt            null.Time       `db:"last_login_at" json:"last_login_at"`
-	ExternalUserID         null.String     `db:"external_user_id" json:"external_user_id"`
+	ID        int         `db:"id" json:"id"`
+	FirstName string      `db:"first_name" json:"first_name"`
+	LastName  string      `db:"last_name" json:"last_name"`
+	Email     null.String `db:"email" json:"email"`
+	Type      string      `db:"type" json:"type"`
+	AvatarURL null.String `db:"avatar_url" json:"avatar_url"`
 }
 
 func (c *ConversationContact) FullName() string {
-	if c.LastName == "" {
-		return c.FirstName
+	name := strings.TrimSpace(c.FirstName + " " + c.LastName)
+	if name == "" {
+		return c.Email.String
 	}
-	return c.FirstName + " " + c.LastName
+	return name
 }
 
 type PreviousConversation struct {
@@ -254,7 +188,7 @@ type PreviousConversation struct {
 	UpdatedAt     time.Time                   `db:"updated_at" json:"updated_at"`
 	UUID          string                      `db:"uuid" json:"uuid"`
 	Subject       string                      `db:"subject" json:"subject"`
-	Contact       PreviousConversationContact `db:"contact" json:"contact"`
+	Contact       PreviousConversationContact `db:"contact" json:"correspondent"`
 	LastMessage   null.String                 `db:"last_message" json:"last_message"`
 	LastMessageAt null.Time                   `db:"last_message_at" json:"last_message_at"`
 }
@@ -263,20 +197,6 @@ type PreviousConversationContact struct {
 	FirstName string      `db:"first_name" json:"first_name"`
 	LastName  string      `db:"last_name" json:"last_name"`
 	AvatarURL null.String `db:"avatar_url" json:"avatar_url"`
-}
-
-// AIConversationSummary is a bounded conversation row for agent-facing AI tools. AssignedUserID and
-// AssignedTeamID carry the fields EnforceConversationAccess reads so per-row access filtering runs in Go.
-type AIConversationSummary struct {
-	ID              int         `db:"id"`
-	ReferenceNumber string      `db:"reference_number"`
-	Subject         string      `db:"subject"`
-	Status          null.String `db:"status"`
-	CreatedAt       time.Time   `db:"created_at"`
-	LastMessageAt   null.Time   `db:"last_message_at"`
-	AssignedUserID  null.Int    `db:"assigned_user_id"`
-	AssignedTeamID  null.Int    `db:"assigned_team_id"`
-	ContactName     string      `db:"contact_name"`
 }
 
 type ConversationParticipant struct {
@@ -360,21 +280,6 @@ func (m *Message) IsContinuityMessage() bool {
 	return isContinuity
 }
 
-// ShouldEvaluateAutomation reports whether this outgoing message may trigger automation rules; machine-generated messages must not, else they loop.
-func (m *Message) ShouldEvaluateAutomation(systemUserID int) bool {
-	return m.SenderID != systemUserID && !m.IsAutomated()
-}
-
-// IsAutomated returns true if the message was produced by an automation rule action.
-func (m *Message) IsAutomated() bool {
-	var meta map[string]any
-	if err := json.Unmarshal([]byte(m.Meta), &meta); err != nil {
-		return false
-	}
-	isAutomated, _ := meta["is_automated"].(bool)
-	return isAutomated
-}
-
 // csatMeta unmarshals the message meta and returns the map and whether is_csat is true.
 func (m *Message) csatMeta() (map[string]any, bool) {
 	var meta map[string]any
@@ -389,47 +294,6 @@ func (m *Message) csatMeta() (map[string]any, bool) {
 func (m *Message) HasCSAT() bool {
 	_, isCsat := m.csatMeta()
 	return isCsat
-}
-
-// ExtractCSATUUID extracts the CSAT UUID from the message meta, falling back to URL parsing.
-func (m *Message) ExtractCSATUUID() string {
-	meta, isCsat := m.csatMeta()
-	if !isCsat {
-		return ""
-	}
-
-	// Read from meta first.
-	if uuid, ok := meta["csat_uuid"].(string); ok && uuid != "" {
-		return uuid
-	}
-
-	// Fallback: extract UUID from the CSAT URL in the message content.
-	return stringutil.ExtractUUID(m.Content)
-}
-
-// CensorCSATContentWithStatus redacts the content and adds submission status for CSAT messages.
-func (m *Message) CensorCSATContentWithStatus(csatSubmitted bool, csatUUID string, rating int, feedback string) {
-	meta, isCsat := m.csatMeta()
-	if !isCsat {
-		return
-	}
-
-	m.Content = "Please rate this conversation"
-	m.TextContent = m.Content
-
-	meta["csat_submitted"] = csatSubmitted
-	meta["csat_uuid"] = csatUUID
-
-	if csatSubmitted {
-		if rating > 0 {
-			meta["submitted_rating"] = rating
-		}
-		meta["submitted_feedback"] = feedback
-	}
-
-	if updatedMeta, err := json.Marshal(meta); err == nil {
-		m.Meta = json.RawMessage(updatedMeta)
-	}
 }
 
 // StripCSATUUID removes the csat_uuid from the message meta.
@@ -584,32 +448,4 @@ type ConversationDraft struct {
 type MentionInput struct {
 	Type string `json:"type"` // "agent" or "team"
 	ID   int    `json:"id"`
-}
-
-// Transcript renders the last max messages as a plaintext "Customer:/Agent:" transcript for AI context.
-func Transcript(msgs []Message, max int) string {
-	if len(msgs) > max {
-		msgs = msgs[len(msgs)-max:]
-	}
-	var b strings.Builder
-	for _, msg := range msgs {
-		role := "Agent"
-		if msg.SenderType == SenderTypeContact {
-			role = "Customer"
-		}
-		text := strings.TrimSpace(msg.TextContent)
-		if msg.ContentType == ContentTypeHTML {
-			if t := stringutil.HTML2TextMarkdownLinks(msg.Content); t != "" {
-				text = t
-			}
-		}
-		if text == "" {
-			continue
-		}
-		b.WriteString(role)
-		b.WriteString(": ")
-		b.WriteString(text)
-		b.WriteString("\n")
-	}
-	return b.String()
 }

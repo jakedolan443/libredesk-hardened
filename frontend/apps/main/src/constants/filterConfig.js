@@ -8,7 +8,6 @@ export const MAX_FILTER_GROUPS = 10
 
 export const FIELD_TYPE = {
     SELECT: 'select',
-    TAG: 'tag',
     MULTI_SELECT: 'multi-select',
     TEXT: 'text',
     NUMBER: 'number',

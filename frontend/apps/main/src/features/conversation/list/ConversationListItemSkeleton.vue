@@ -1,12 +1,5 @@
 <template>
   <div class="flex items-start gap-2 px-3 py-2.5 border-b border-border">
-    <div class="relative flex-shrink-0 w-10 h-10">
-      <div class="skel-bar h-10 w-10 rounded-full" />
-      <span class="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background border border-border flex items-center justify-center">
-        <span class="skel-bar w-2 h-2 rounded-full" />
-      </span>
-    </div>
-
     <div class="flex-1 min-w-0 space-y-1.5 pt-0.5">
       <div class="flex items-baseline justify-between gap-2">
         <div class="flex items-baseline gap-1.5 min-w-0">

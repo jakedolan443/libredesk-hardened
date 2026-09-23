@@ -10,6 +10,9 @@ import (
 
 func TestV2_9_0PrivateNotePermissionMigration(t *testing.T) {
 	db := testutil.NewDB(t, "migration_v2_9_0")
+	db.MustExec(`CREATE TYPE user_notification_type AS ENUM ('mention','assignment','sla_warning','sla_breach');
+ CREATE TABLE user_notifications(id BIGSERIAL PRIMARY KEY);
+ ALTER TYPE template_type ADD VALUE 'email_notification';`)
 
 	roles := []struct {
 		name        string
@@ -55,11 +58,15 @@ func TestV2_9_0PrivateNotePermissionMigration(t *testing.T) {
 
 func TestV2_9_0NotificationMigration(t *testing.T) {
 	db := testutil.NewDB(t, "migration_v2_9_0_notifications")
+	db.MustExec(`CREATE TYPE user_notification_type AS ENUM ('mention','assignment','sla_warning','sla_breach');
+ CREATE TABLE user_notifications(id BIGSERIAL PRIMARY KEY);
+ ALTER TYPE template_type ADD VALUE 'email_notification';`)
+
 	db.MustExec(`
-		DROP TABLE notification_email_queue;
-		DROP TABLE notification_push_subscriptions;
-		DROP TABLE user_notification_preferences;
-		DROP TYPE notification_channel;
+		DROP TABLE IF EXISTS notification_email_queue;
+		DROP TABLE IF EXISTS notification_push_subscriptions;
+		DROP TABLE IF EXISTS user_notification_preferences;
+		DROP TYPE IF EXISTS notification_channel;
 		DELETE FROM settings WHERE "key" IN (
 			'notification.push.vapid_public_key',
 			'notification.push.vapid_private_key'
@@ -128,6 +135,13 @@ func TestV2_9_0NotificationMigration(t *testing.T) {
 
 func TestV2_9_0PreservesExistingQueuedEmails(t *testing.T) {
 	db := testutil.NewDB(t, "migration_v2_9_0_queue")
+	db.MustExec(`CREATE TYPE user_notification_type AS ENUM ('mention','assignment','sla_warning','sla_breach');
+ CREATE TABLE user_notifications(id BIGSERIAL PRIMARY KEY);
+ ALTER TYPE template_type ADD VALUE 'email_notification';`)
+
+	if err := V2_9_0(db, nil, nil); err != nil {
+		t.Fatal(err)
+	}
 	columnQuery := `SELECT data_type || ':' || is_nullable || ':' || COALESCE(column_default, '') FROM information_schema.columns WHERE table_name = 'notification_email_queue' AND column_name = $1`
 	var expectedAttemptsColumn string
 	if err := db.Get(&expectedAttemptsColumn, columnQuery, "attempts"); err != nil {

@@ -25,23 +25,6 @@
                 {{ $t('globals.messages.setUp') }}
               </Button>
             </div>
-
-            <div class="checklist-item" :class="{ completed: hasAgents, disabled: !hasInboxes }">
-              <CheckCircle v-if="hasAgents" class="check-icon completed" />
-              <Circle v-else class="w-5 h-5 text-muted-foreground" />
-              <span class="flex-1 text-left ml-3 text-foreground">
-                {{ $t('setup.inviteTeammates') }}
-              </span>
-              <Button
-                v-if="!hasAgents && hasInboxes"
-                variant="ghost"
-                size="sm"
-                @click="router.push({ name: 'agent-list' })"
-                class="ml-auto"
-              >
-                {{ $t('globals.messages.invite') }}
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -59,24 +42,23 @@ import { CheckCircle, Circle } from 'lucide-vue-next'
 import { Button } from '@shared-ui/components/ui/button'
 import { Spinner } from '@shared-ui/components/ui/spinner'
 import { useInboxStore } from '@/stores/inbox'
-import { useUsersStore } from '@/stores/users'
 
 const router = useRouter()
 const inboxStore = useInboxStore()
-const usersStore = useUsersStore()
+
 const isLoading = ref(true)
 
 onMounted(async () => {
   try {
-    await Promise.all([inboxStore.fetchInboxes(), usersStore.fetchUsers()])
+    await inboxStore.fetchInboxes()
   } finally {
     isLoading.value = false
   }
 })
 
 const hasInboxes = computed(() => inboxStore.inboxes.length > 0)
-const hasAgents = computed(() => usersStore.users.length > 0)
-const showGettingStarted = computed(() => !hasInboxes.value || !hasAgents.value)
+
+const showGettingStarted = computed(() => !hasInboxes.value)
 </script>
 
 <style scoped>

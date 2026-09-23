@@ -52,7 +52,6 @@ describe('Email Inbox Form Schema', () => {
             reply_to: 'reply@example.com',
             enabled: true,
             csat_enabled: true,
-            prompt_tags_on_reply: false,
             enable_plus_addressing: true,
             auth_type: 'oauth2',
             oauth: {

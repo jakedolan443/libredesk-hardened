@@ -60,18 +60,6 @@ func handleSearchMessages(r *fastglue.Request) error {
 	return r.SendEnvelope(results)
 }
 
-func handleSearchContacts(r *fastglue.Request) error {
-	app, _, term, err := searchTerm(r)
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	results, err := app.search.Contacts(term, searchLimit(r, maxContactSearchLimit))
-	if err != nil {
-		return sendErrorEnvelope(r, err)
-	}
-	return r.SendEnvelope(results)
-}
-
 func handlePaginatedSearchConversations(r *fastglue.Request) error {
 	app, user, q, err := searchInputs(r)
 	if err != nil {

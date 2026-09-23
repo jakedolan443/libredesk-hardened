@@ -71,21 +71,6 @@ func ExchangeCodeForToken(ctx context.Context, provider Provider, clientID, clie
 	return cfg.Exchange(ctx, code)
 }
 
-// RefreshToken exchanges a refresh token for a new access token.
-func RefreshToken(ctx context.Context, provider Provider, clientID, clientSecret, refreshToken string, tenantID ...string) (*oauth2.Token, error) {
-	cfg, err := GetOAuth2Config(provider, clientID, clientSecret, "", tenantID...)
-	if err != nil {
-		return nil, err
-	}
-
-	oldToken := &oauth2.Token{
-		RefreshToken: refreshToken,
-	}
-
-	src := cfg.TokenSource(ctx, oldToken)
-	return src.Token()
-}
-
 // BuildAuthorizationURL builds the OAuth authorization URL.
 func BuildAuthorizationURL(provider Provider, clientID, redirectURI, state string, tenantID ...string) (string, error) {
 	cfg, err := GetOAuth2Config(provider, "", "", redirectURI, tenantID...)

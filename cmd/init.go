@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/knadh/go-i18n"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,44 +14,36 @@ import (
 
 	"html/template"
 
-	activitylog "github.com/abhinavxd/libredesk/internal/activity_log"
-	"github.com/abhinavxd/libredesk/internal/ai"
-	"github.com/abhinavxd/libredesk/internal/aiagent"
 	auth_ "github.com/abhinavxd/libredesk/internal/auth"
 	"github.com/abhinavxd/libredesk/internal/authz"
-	"github.com/abhinavxd/libredesk/internal/autoassigner"
-	"github.com/abhinavxd/libredesk/internal/automation"
-	businesshours "github.com/abhinavxd/libredesk/internal/business_hours"
+
 	"github.com/abhinavxd/libredesk/internal/colorlog"
-	contextlink "github.com/abhinavxd/libredesk/internal/context_link"
+
 	"github.com/abhinavxd/libredesk/internal/conversation"
-	"github.com/abhinavxd/libredesk/internal/conversation/priority"
+
 	"github.com/abhinavxd/libredesk/internal/conversation/status"
-	"github.com/abhinavxd/libredesk/internal/csat"
-	customAttribute "github.com/abhinavxd/libredesk/internal/custom_attribute"
-	"github.com/abhinavxd/libredesk/internal/helpcenter"
+
 	"github.com/abhinavxd/libredesk/internal/importer"
 	"github.com/abhinavxd/libredesk/internal/inbox"
 	"github.com/abhinavxd/libredesk/internal/inbox/channel/email"
-	"github.com/abhinavxd/libredesk/internal/inbox/channel/livechat"
+
 	imodels "github.com/abhinavxd/libredesk/internal/inbox/models"
-	"github.com/abhinavxd/libredesk/internal/macro"
+
+	accountmail "github.com/abhinavxd/libredesk/internal/accountmail"
+	emailaccountmail "github.com/abhinavxd/libredesk/internal/accountmail/providers/email"
 	"github.com/abhinavxd/libredesk/internal/media"
 	fs "github.com/abhinavxd/libredesk/internal/media/stores/localfs"
 	"github.com/abhinavxd/libredesk/internal/media/stores/s3"
-	notifier "github.com/abhinavxd/libredesk/internal/notification"
-	notificationchannels "github.com/abhinavxd/libredesk/internal/notification/channels"
-	emailnotifier "github.com/abhinavxd/libredesk/internal/notification/providers/email"
+
 	"github.com/abhinavxd/libredesk/internal/oidc"
 	"github.com/abhinavxd/libredesk/internal/ratelimit"
-	"github.com/abhinavxd/libredesk/internal/report"
+
 	"github.com/abhinavxd/libredesk/internal/resourceimage"
 	"github.com/abhinavxd/libredesk/internal/role"
 	"github.com/abhinavxd/libredesk/internal/search"
 	"github.com/abhinavxd/libredesk/internal/setting"
-	"github.com/abhinavxd/libredesk/internal/sla"
+
 	"github.com/abhinavxd/libredesk/internal/ssrf"
-	"github.com/abhinavxd/libredesk/internal/tag"
 	"github.com/abhinavxd/libredesk/internal/team"
 	tmpl "github.com/abhinavxd/libredesk/internal/template"
 	"github.com/abhinavxd/libredesk/internal/user"
@@ -58,7 +51,7 @@ import (
 	"github.com/abhinavxd/libredesk/internal/webhook"
 	"github.com/abhinavxd/libredesk/internal/ws"
 	"github.com/jmoiron/sqlx"
-	"github.com/knadh/go-i18n"
+
 	kjson "github.com/knadh/koanf/parsers/json"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/confmap"
@@ -190,8 +183,8 @@ func initFS(staticDir string) stuffbin.FileSystem {
 			// Running in local/dev mode, use the local filesystem.
 			// Only include frontend dirs if they exist (frontend build is optional in dev).
 			colorlog.Red("binary unstuff failed, using local filesystem for static files")
-			files := []string{"i18n", "static"}
-			for _, d := range []string{"frontend/dist/main", "frontend/dist/widget"} {
+			files := []string{"i18n", "static", "schema.sql"}
+			for _, d := range []string{"frontend/dist/main"} {
 				if _, err := os.Stat(d); err == nil {
 					files = append(files, d)
 				}
@@ -288,29 +281,19 @@ func initUser(i18n *i18n.I18n, DB *sqlx.DB) *user.Manager {
 // initConversations inits conversation manager.
 func initConversations(
 	i18n *i18n.I18n,
-	sla *sla.Manager,
 	status *status.Manager,
-	priority *priority.Manager,
 	hub *ws.Hub,
 	db *sqlx.DB,
 	inboxStore *inbox.Manager,
 	userStore *user.Manager,
-	teamStore *team.Manager,
 	mediaStore *media.Manager,
 	settings *setting.Manager,
-	csat *csat.Manager,
-	automationEngine *automation.Engine,
 	template *tmpl.Manager,
 	webhook *webhook.Manager,
-	dispatcher *notifier.Dispatcher,
 	resourceImages *resourceimage.Store,
 ) *conversation.Manager {
-	continuityConfig := &conversation.ContinuityConfig{}
-	if ko.Exists("conversation.continuity_scan_interval") {
-		continuityConfig.BatchCheckInterval = ko.MustDuration("conversation.continuity_scan_interval")
-	}
 
-	c, err := conversation.New(hub, i18n, sla, status, priority, inboxStore, userStore, teamStore, mediaStore, settings, csat, automationEngine, template, webhook, dispatcher, conversation.Opts{
+	c, err := conversation.New(hub, i18n, status, inboxStore, userStore, mediaStore, settings, template, webhook, conversation.Opts{
 		CacheIncomingImages: func(ctx context.Context, id int, content string) error {
 			return resourceImages.Prefetch(ctx, id, content, settings.GetResourcePolicyTx)
 		},
@@ -318,27 +301,12 @@ func initConversations(
 		Lo:                       initLogger("conversation_manager"),
 		OutgoingMessageQueueSize: ko.MustInt("message.outgoing_queue_size"),
 		IncomingMessageQueueSize: ko.MustInt("message.incoming_queue_size"),
-		ContinuityConfig:         continuityConfig,
 		SubjectRefFormat:         ko.String("conversation.subject_ref_format"),
 	})
 	if err != nil {
 		log.Fatalf("error initializing conversation manager: %v", err)
 	}
 	return c
-}
-
-// initTag inits tag manager.
-func initTag(db *sqlx.DB, i18n *i18n.I18n) *tag.Manager {
-	var lo = initLogger("tag_manager")
-	mgr, err := tag.New(tag.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing tags: %v", err)
-	}
-	return mgr
 }
 
 // initViews inits view manager.
@@ -351,62 +319,6 @@ func initView(db *sqlx.DB, i18n *i18n.I18n) *view.Manager {
 	})
 	if err != nil {
 		log.Fatalf("error initializing view manager: %v", err)
-	}
-	return m
-}
-
-// initMacro inits macro manager.
-func initMacro(db *sqlx.DB, i18n *i18n.I18n) *macro.Manager {
-	var lo = initLogger("macro")
-	m, err := macro.New(macro.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing macro manager: %v", err)
-	}
-	return m
-}
-
-// initBusinessHours inits business hours manager.
-func initBusinessHours(db *sqlx.DB, i18n *i18n.I18n) *businesshours.Manager {
-	var lo = initLogger("business-hours")
-	m, err := businesshours.New(businesshours.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing business hours manager: %v", err)
-	}
-	return m
-}
-
-// initSLA inits SLA manager.
-func initSLA(db *sqlx.DB, teamManager *team.Manager, settings *setting.Manager, businessHours *businesshours.Manager, template *tmpl.Manager, userManager *user.Manager, i18n *i18n.I18n, dispatcher *notifier.Dispatcher) *sla.Manager {
-	var lo = initLogger("sla")
-	m, err := sla.New(sla.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	}, teamManager, settings, businessHours, template, userManager, dispatcher)
-	if err != nil {
-		log.Fatalf("error initializing SLA manager: %v", err)
-	}
-	return m
-}
-
-// initCSAT inits CSAT manager.
-func initCSAT(db *sqlx.DB, i18n *i18n.I18n) *csat.Manager {
-	var lo = initLogger("csat")
-	m, err := csat.New(csat.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing CSAT manager: %v", err)
 	}
 	return m
 }
@@ -456,11 +368,7 @@ func initTemplate(db *sqlx.DB, fs stuffbin.FileSystem, consts *constants, i18n *
 
 // getTmplFuncs returns the template functions.
 func getTmplFuncs(consts *constants, i18n *i18n.I18n, fs stuffbin.FileSystem) template.FuncMap {
-	lucideIcons := loadLucideIcons(fs)
 	return template.FuncMap{
-		"LucideIcon": func(name string) template.HTML {
-			return lucideIcons[name]
-		},
 		"RootURL": func() string {
 			return consts.AppBaseURL
 		},
@@ -545,12 +453,11 @@ func reloadTemplates(app *App) error {
 	return app.tmpl.Reload(webTpls, tpls, funcMap)
 }
 
-// parseWebTemplates parses the top-level web templates and the per-template help center pages.
+// parseWebTemplates parses the top-level web templates.
 func parseWebTemplates(funcMap template.FuncMap, fs stuffbin.FileSystem) (*template.Template, error) {
 	var paths []string
 	for _, pattern := range []string{
 		"/static/public/web-templates/*.html",
-		"/static/public/web-templates/help/*/*.html",
 	} {
 		p, err := fs.Glob(pattern)
 		if err != nil {
@@ -657,53 +564,33 @@ func initInbox(db *sqlx.DB, i18n *i18n.I18n) *inbox.Manager {
 	return mgr
 }
 
-// initAutomationEngine initializes the automation engine.
-func initAutomationEngine(db *sqlx.DB, i18n *i18n.I18n) *automation.Engine {
-	var lo = initLogger("automation_engine")
-	engine, err := automation.New(automation.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing automation engine: %v", err)
-	}
-	return engine
-}
-
-// initAutoAssigner initializes the auto assigner.
-func initAutoAssigner(teamManager *team.Manager, userManager *user.Manager, conversationManager *conversation.Manager) *autoassigner.Engine {
-	systemUser, err := userManager.GetSystemUser()
-	if err != nil {
-		log.Fatalf("error fetching system user: %v", err)
-	}
-	e, err := autoassigner.New(teamManager, conversationManager, systemUser, initLogger("autoassigner"))
-	if err != nil {
-		log.Fatalf("error initializing auto assigner: %v", err)
-	}
-	return e
-}
-
-// initNotifier initializes the notifier service with available providers.
-func initNotifier() *notifier.Service {
+// initAccountMailer initializes the accountmail service with available providers.
+func initAccountMailer() *accountmail.Service {
 	smtpCfg := imodels.SMTPConfig{}
-	if err := ko.UnmarshalWithConf("notification.email", &smtpCfg, koanf.UnmarshalConf{Tag: "json"}); err != nil {
-		log.Fatalf("error unmarshalling email notification provider config: %v", err)
+	if err := ko.UnmarshalWithConf("account_email", &smtpCfg, koanf.UnmarshalConf{Tag: "json"}); err != nil {
+		log.Fatalf("error unmarshalling account email provider config: %v", err)
 	}
 
-	emailNotifier, err := emailnotifier.New([]imodels.SMTPConfig{smtpCfg}, emailnotifier.Opts{
-		Lo:        initLogger("email-notifier"),
-		FromEmail: ko.String("notification.email.email_address"),
+	emailNotifier, err := emailaccountmail.New([]imodels.SMTPConfig{smtpCfg}, emailaccountmail.Opts{
+		Lo:        initLogger("email-accountmail"),
+		FromEmail: ko.String("account_email.email_address"),
 	})
 	if err != nil {
-		log.Fatalf("error initializing email notifier: %v", err)
+		log.Fatalf("error initializing email accountmail: %v", err)
 	}
 
-	notifierProviders := map[string]notifier.Notifier{
+	accountmailProviders := map[string]accountmail.Notifier{
 		emailNotifier.Name(): emailNotifier,
 	}
 
-	return notifier.NewService(notifierProviders, ko.MustInt("notification.concurrency"), ko.MustInt("notification.queue_size"), initLogger("notifier"))
+	workers, capacity := ko.Int("account_email.concurrency"), ko.Int("account_email.queue_size")
+	if workers < 1 {
+		workers = 2
+	}
+	if capacity < 1 {
+		capacity = 2000
+	}
+	return accountmail.NewService(accountmailProviders, workers, capacity, initLogger("accountmail"))
 }
 
 // initEmailInbox loads inbox config from DB and initializes the email inbox.
@@ -773,44 +660,12 @@ func initEmailInbox(inboxRecord imodels.Inbox, msgStore inbox.MessageStore, usrS
 	return inbox, nil
 }
 
-// initLiveChatInbox initializes the live chat inbox.
-func initLiveChatInbox(inboxRecord imodels.Inbox, msgStore inbox.MessageStore, usrStore inbox.UserStore, signAvatarURL func(*null.String)) (inbox.Inbox, error) {
-	var config livechat.Config
-
-	// Load JSON data into Koanf.
-	if err := ko.Load(rawbytes.Provider([]byte(inboxRecord.Config)), kjson.Parser()); err != nil {
-		return nil, fmt.Errorf("loading config: %w", err)
-	}
-
-	if err := ko.UnmarshalWithConf("", &config, koanf.UnmarshalConf{Tag: "json"}); err != nil {
-		return nil, fmt.Errorf("unmarshalling `%s` %s config: %w", inboxRecord.Channel, inboxRecord.Name, err)
-	}
-
-	inbox, err := livechat.New(msgStore, usrStore, livechat.Opts{
-		ID:            inboxRecord.ID,
-		Name:          inboxRecord.Name,
-		Config:        config,
-		Lo:            initLogger("livechat_inbox"),
-		SignAvatarURL: signAvatarURL,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("initializing `%s` inbox: `%s` error : %w", inboxRecord.Channel, inboxRecord.Name, err)
-	}
-
-	log.Printf("`%s` inbox successfully initialized", inboxRecord.Name)
-
-	return inbox, nil
-}
-
 // makeInboxInitializer creates an inbox initializer function.
 func makeInboxInitializer(mgr *inbox.Manager, signAvatarURL func(*null.String)) func(imodels.Inbox, inbox.MessageStore, inbox.UserStore) (inbox.Inbox, error) {
 	return func(inboxR imodels.Inbox, msgStore inbox.MessageStore, usrStore inbox.UserStore) (inbox.Inbox, error) {
 		switch inboxR.Channel {
 		case inbox.ChannelEmail:
 			return initEmailInbox(inboxR, msgStore, usrStore, mgr)
-		case inbox.ChannelLiveChat:
-			return initLiveChatInbox(inboxR, msgStore, usrStore, signAvatarURL)
 		default:
 			return nil, fmt.Errorf("unknown inbox channel: %s", inboxR.Channel)
 		}
@@ -960,7 +815,7 @@ func initRedis() *redis.Client {
 }
 
 func initFastCache(rdb *redis.Client) *fastcache.FastCache {
-	return fastcache.New(goredis.New(goredis.Config{Prefix: fastCachePrefix}, rdb))
+	return fastcache.New(goredis.New(goredis.Config{Prefix: "mail"}, rdb))
 }
 
 // initRedis inits postgres DB.
@@ -1015,66 +870,6 @@ func initStatus(db *sqlx.DB, i18n *i18n.I18n) *status.Manager {
 	return manager
 }
 
-// initPriority inits conversation priority manager.
-func initPriority(db *sqlx.DB, i18n *i18n.I18n) *priority.Manager {
-	manager, err := priority.New(priority.Opts{
-		DB:   db,
-		Lo:   initLogger("priority-manager"),
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing priority manager: %v", err)
-	}
-	return manager
-}
-
-// initAI inits AI manager.
-func initAI(ctx context.Context, db *sqlx.DB, i18n *i18n.I18n, dialControl ssrf.Control) *ai.Manager {
-	lo := initLogger("ai")
-	m, err := ai.New(ai.Opts{
-		Ctx:           ctx,
-		DB:            db,
-		Lo:            lo,
-		I18n:          i18n,
-		EncryptionKey: ko.MustString("app.encryption_key"),
-		DialControl:   dialControl,
-	})
-	if err != nil {
-		log.Fatalf("error initializing AI manager: %v", err)
-	}
-	return m
-}
-
-// initHelpCenter inits the help center manager.
-func initHelpCenter(db *sqlx.DB, i18n *i18n.I18n, indexer helpcenter.ArticleIndexer) *helpcenter.Manager {
-	m, err := helpcenter.New(helpcenter.Opts{
-		DB:      db,
-		Lo:      initLogger("helpcenter"),
-		I18n:    i18n,
-		Indexer: indexer,
-	})
-	if err != nil {
-		log.Fatalf("error initializing help center manager: %v", err)
-	}
-	return m
-}
-
-// initAIAgent inits the autonomous AI agent manager.
-func initAIAgent(db *sqlx.DB, i18n *i18n.I18n, aiManager *ai.Manager, convo *conversation.Manager, mediaManager *media.Manager, settingManager *setting.Manager, userManager *user.Manager, notifierService *notifier.Service, rdb *redis.Client) *aiagent.Manager {
-	m, err := aiagent.New(aiagent.Opts{
-		DB:                 db,
-		Lo:                 initLogger("ai_agent"),
-		I18n:               i18n,
-		QueueSize:          cmp.Or(ko.Int("ai_agent.queue_size"), 1000),
-		MaxSteps:           min(max(cmp.Or(ko.Int("ai_agent.max_steps"), 6), 1), 20),
-		MaxHistoryMessages: min(max(cmp.Or(ko.Int("ai_agent.max_history_messages"), 30), 5), 100),
-	}, aiManager, convo, mediaManager, settingManager, userManager, notifierService, rdb)
-	if err != nil {
-		log.Fatalf("error initializing AI agent manager: %v", err)
-	}
-	return m
-}
-
 // initSearch inits search manager.
 func initSearch(db *sqlx.DB, i18n *i18n.I18n, convo *conversation.Manager) *search.Manager {
 	lo := initLogger("search")
@@ -1088,63 +883,6 @@ func initSearch(db *sqlx.DB, i18n *i18n.I18n, convo *conversation.Manager) *sear
 	})
 	if err != nil {
 		log.Fatalf("error initializing search manager: %v", err)
-	}
-	return m
-}
-
-// initCustomAttribute inits custom attribute manager.
-func initCustomAttribute(db *sqlx.DB, i18n *i18n.I18n) *customAttribute.Manager {
-	lo := initLogger("custom-attribute")
-	m, err := customAttribute.New(customAttribute.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing custom attribute manager: %v", err)
-	}
-	return m
-}
-
-// initActivityLog inits activity log manager.
-func initActivityLog(db *sqlx.DB, i18n *i18n.I18n) *activitylog.Manager {
-	lo := initLogger("activity-log")
-	m, err := activitylog.New(activitylog.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing activity log manager: %v", err)
-	}
-	return m
-}
-
-// initReport inits report manager.
-func initReport(db *sqlx.DB, i18n *i18n.I18n) *report.Manager {
-	lo := initLogger("report")
-	m, err := report.New(report.Opts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing report manager: %v", err)
-	}
-	return m
-}
-
-// initContextLink inits context link manager.
-func initContextLink(db *sqlx.DB, i18n *i18n.I18n) *contextlink.Manager {
-	var lo = initLogger("context-link")
-	m, err := contextlink.New(contextlink.Opts{
-		DB:            db,
-		Lo:            lo,
-		I18n:          i18n,
-		EncryptionKey: ko.MustString("app.encryption_key"),
-	})
-	if err != nil {
-		log.Fatalf("error initializing context link manager: %v", err)
 	}
 	return m
 }
@@ -1168,81 +906,11 @@ func initWebhook(db *sqlx.DB, i18n *i18n.I18n, dialControl ssrf.Control) *webhoo
 	return m
 }
 
-// initUserNotification inits user notification manager.
-func initUserNotification(db *sqlx.DB, i18n *i18n.I18n) *notifier.UserNotificationManager {
-	var lo = initLogger("user-notification")
-	m, err := notifier.NewUserNotificationManager(notifier.UserNotificationOpts{
-		DB:   db,
-		Lo:   lo,
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing user notification manager: %v", err)
-	}
-	return m
-}
-
-// initNotificationPreference inits the notification preference manager.
-func initNotificationPreference(db *sqlx.DB, i18n *i18n.I18n) *notifier.PreferenceManager {
-	m, err := notifier.NewPreferenceManager(notifier.PreferenceManagerOpts{
-		DB:   db,
-		Lo:   initLogger("notification-preference"),
-		I18n: i18n,
-	})
-	if err != nil {
-		log.Fatalf("error initializing notification preference manager: %v", err)
-	}
-	return m
-}
-
 // initImporter inits the importer manager.
 func initImporter(i18n *i18n.I18n) *importer.Importer {
 	return importer.New(importer.Opts{
 		Lo:   initLogger("importer"),
 		I18n: i18n,
-	})
-}
-
-func initNotificationEmailQueue(db *sqlx.DB, outbound *notifier.Service) *notifier.EmailQueue {
-	q, err := notifier.NewEmailQueue(notifier.EmailQueueOpts{
-		DB:       db,
-		Outbound: outbound,
-		Lo:       initLogger("notification-email-queue"),
-	})
-	if err != nil {
-		log.Fatalf("error initializing notification email queue: %v", err)
-	}
-	return q
-}
-
-func initPushNotification(db *sqlx.DB, settings *setting.Manager, i18n *i18n.I18n) *notifier.PushManager {
-	m, err := notifier.NewPushManager(notifier.PushManagerOpts{
-		DB:          db,
-		Settings:    settings,
-		Lo:          initLogger("push-notification"),
-		I18n:        i18n,
-		RootURL:     ko.String("app.root_url"),
-		Concurrency: ko.MustInt("notification.concurrency"),
-		QueueSize:   ko.MustInt("notification.queue_size"),
-	})
-	if err != nil {
-		log.Fatalf("error initializing push notification manager: %v", err)
-	}
-	return m
-}
-
-// initNotifDispatcher initializes the notification dispatcher.
-func initNotifDispatcher(userNotification *notifier.UserNotificationManager, prefs *notifier.PreferenceManager, push *notifier.PushManager, emailQueue *notifier.EmailQueue, wsHub *ws.Hub, emailEnabled bool) *notifier.Dispatcher {
-	providers := []notificationchannels.Provider{
-		notificationchannels.NewInApp(userNotification, wsHub, initLogger("notification-in-app")),
-	}
-	if emailEnabled {
-		providers = append(providers, notificationchannels.NewEmail(emailQueue))
-	}
-	providers = append(providers, notificationchannels.NewPush(push))
-	return notifier.NewDispatcher(notifier.DispatcherOpts{
-		Pipeline: notificationchannels.NewPipeline(providers...),
-		Prefs:    prefs,
 	})
 }
 
@@ -1293,9 +961,7 @@ func initRateLimit(redisClient *redis.Client) *ratelimit.Limiter {
 		Name string
 		RPM  int
 	}{
-		{"widget", 100},
 		{"auth", 30},
-		{"public", 100},
 		{"media", 300},
 	}
 

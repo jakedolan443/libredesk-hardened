@@ -14,6 +14,12 @@
   height: 100%;
 }
 
+.editor-wrapper > .native-html {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
 .tiptap.ProseMirror {
   flex: 1;
   min-height: 70px;

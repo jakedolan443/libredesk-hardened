@@ -49,22 +49,6 @@
         </TooltipTrigger>
         <TooltipContent>{{ $t('globals.messages.addEmoji') }}</TooltipContent>
       </Tooltip>
-      <Tooltip v-if="showGenerateReply">
-        <TooltipTrigger as-child>
-          <Toggle
-            :class="ICON_BUTTON_CLASS"
-            variant="outline"
-            :pressed="false"
-            :disabled="isGenerating"
-            :aria-label="$t('replyBox.generateReply')"
-            @click="emit('generateReply')"
-          >
-            <Loader2 v-if="isGenerating" class="h-4 w-4 animate-spin" />
-            <Sparkles v-else class="h-4 w-4" />
-          </Toggle>
-        </TooltipTrigger>
-        <TooltipContent>{{ $t('replyBox.generateReply') }}</TooltipContent>
-      </Tooltip>
     </div>
     <div class="flex items-center rounded-md shadow-sm">
       <Button
@@ -109,7 +93,7 @@ import { onClickOutside } from '@vueuse/core'
 import { Button } from '@shared-ui/components/ui/button'
 import { Toggle } from '@shared-ui/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@shared-ui/components/ui/tooltip'
-import { Paperclip, Smile, ChevronDownIcon, Sparkles, Loader2 } from 'lucide-vue-next'
+import { Paperclip, Smile, ChevronDownIcon } from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -129,13 +113,12 @@ const attachmentInput = ref(null)
 // const inlineImageInput = ref(null)
 const isEmojiPickerVisible = ref(false)
 const emojiPickerRef = ref(null)
-const emit = defineEmits(['emojiSelect', 'generateReply'])
+const emit = defineEmits(['emojiSelect'])
 
 // Using defineProps for props that don't need two-way binding
 defineProps({
   isFullscreen: Boolean,
   isSending: Boolean,
-  isGenerating: Boolean,
   enableSend: Boolean,
   handleSend: Function,
   handleSendAndSetStatus: Function,

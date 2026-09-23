@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/volatiletech/null/v9"
 )
 
@@ -55,24 +54,23 @@ type Sender struct {
 }
 
 type ConversationResult struct {
-	ID              int            `db:"id" json:"-"`
-	ReferenceMatch  bool           `db:"reference_match" json:"-"`
-	CreatedAt       time.Time      `db:"created_at" json:"created_at"`
-	UUID            string         `db:"uuid" json:"uuid"`
-	ReferenceNumber string         `db:"reference_number" json:"reference_number"`
-	Subject         null.String    `db:"subject" json:"subject"`
-	LastMessage     null.String    `db:"last_message" json:"last_message"`
-	LastMessageAt   null.Time      `db:"last_message_at" json:"last_message_at"`
-	AssignedUserID  null.Int       `db:"assigned_user_id" json:"assigned_user_id"`
-	AssignedTeamID  null.Int       `db:"assigned_team_id" json:"assigned_team_id"`
-	Assignee        Assignee       `db:"assignee" json:"assignee"`
-	TeamName        null.String    `db:"team_name" json:"team_name"`
-	Status          null.String    `db:"status" json:"status"`
-	Priority        null.String    `db:"priority" json:"priority"`
-	InboxName       null.String    `db:"inbox_name" json:"inbox_name"`
-	InboxChannel    null.String    `db:"inbox_channel" json:"inbox_channel"`
-	Contact         Contact        `db:"contact" json:"contact"`
-	Tags            pq.StringArray `db:"tags" json:"tags"`
+	ID              int         `db:"id" json:"-"`
+	ReferenceMatch  bool        `db:"reference_match" json:"-"`
+	CreatedAt       time.Time   `db:"created_at" json:"created_at"`
+	UUID            string      `db:"uuid" json:"uuid"`
+	ReferenceNumber string      `db:"reference_number" json:"reference_number"`
+	Subject         null.String `db:"subject" json:"subject"`
+	LastMessage     null.String `db:"last_message" json:"last_message"`
+	LastMessageAt   null.Time   `db:"last_message_at" json:"last_message_at"`
+	AssignedUserID  null.Int    `db:"assigned_user_id" json:"-"`
+	AssignedTeamID  null.Int    `db:"assigned_team_id" json:"-"`
+	Assignee        Assignee    `db:"assignee" json:"-"`
+	TeamName        null.String `db:"team_name" json:"-"`
+	Status          null.String `db:"status" json:"status"`
+	Priority        null.String `db:"priority" json:"-"`
+	InboxName       null.String `db:"inbox_name" json:"inbox_name"`
+	InboxChannel    null.String `db:"inbox_channel" json:"inbox_channel"`
+	Contact         Contact     `db:"contact" json:"correspondent"`
 }
 
 type MessageResult struct {
@@ -89,21 +87,12 @@ type MessageResult struct {
 	ConversationReferenceNumber string      `db:"conversation_reference_number" json:"conversation_reference_number"`
 	ConversationSubject         null.String `db:"conversation_subject" json:"conversation_subject"`
 	ConversationStatus          null.String `db:"conversation_status" json:"conversation_status"`
-	AssignedUserID              null.Int    `db:"assigned_user_id" json:"assigned_user_id"`
-	AssignedTeamID              null.Int    `db:"assigned_team_id" json:"assigned_team_id"`
-	Assignee                    Assignee    `db:"assignee" json:"assignee"`
-	TeamName                    null.String `db:"team_name" json:"team_name"`
-	Priority                    null.String `db:"priority" json:"priority"`
+	AssignedUserID              null.Int    `db:"assigned_user_id" json:"-"`
+	AssignedTeamID              null.Int    `db:"assigned_team_id" json:"-"`
+	Assignee                    Assignee    `db:"assignee" json:"-"`
+	TeamName                    null.String `db:"team_name" json:"-"`
+	Priority                    null.String `db:"priority" json:"-"`
 	InboxName                   null.String `db:"inbox_name" json:"inbox_name"`
 	InboxChannel                null.String `db:"inbox_channel" json:"inbox_channel"`
-	Contact                     Contact     `db:"contact" json:"contact"`
-}
-
-type ContactResult struct {
-	ID             int         `db:"id" json:"id"`
-	CreatedAt      time.Time   `db:"created_at" json:"created_at"`
-	FirstName      string      `db:"first_name" json:"first_name"`
-	LastName       string      `db:"last_name" json:"last_name"`
-	Email          string      `db:"email" json:"email"`
-	ExternalUserID null.String `db:"external_user_id" json:"external_user_id"`
+	Contact                     Contact     `db:"contact" json:"correspondent"`
 }

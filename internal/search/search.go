@@ -69,9 +69,8 @@ type Opts struct {
 
 // queries contains all the prepared queries
 type queries struct {
-	SearchConversations string     `query:"search-conversations"`
-	SearchMessages      string     `query:"search-messages"`
-	SearchContacts      *sqlx.Stmt `query:"search-contacts"`
+	SearchConversations string `query:"search-conversations"`
+	SearchMessages      string `query:"search-messages"`
 }
 
 // New creates a new search manager
@@ -107,16 +106,6 @@ func (s *Manager) Messages(query models.Query, scope models.ReadScope) ([]models
 func (s *Manager) MessageFirstPage(term string, scope models.ReadScope, limit int) ([]models.MessageResult, error) {
 	results, _, _, err := s.searchMessages(models.Query{Term: term, PageSize: limit}, scope, maxMessageFirstPageSize)
 	return results, err
-}
-
-// Contacts searches contacts based on the query
-func (s *Manager) Contacts(query string, limit int) ([]models.ContactResult, error) {
-	var results = make([]models.ContactResult, 0)
-	if err := s.q.SearchContacts.Select(&results, dbutil.ContainsPattern(query), limit); err != nil {
-		s.lo.Error("error searching contacts", "error", err)
-		return nil, envelope.NewError(envelope.GeneralError, s.i18n.T("globals.messages.somethingWentWrong"), nil)
-	}
-	return results, nil
 }
 
 func NormalizeQuery(query models.Query) models.Query {

@@ -118,7 +118,7 @@ func TestGetAgentsCompactFilters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentsCompact without filters: %v", err)
 	}
-	if len(unfiltered) != 3 {
-		t.Fatalf("got %d users without filters, want 3", len(unfiltered))
+	if len(unfiltered) != 2 {
+		t.Fatalf("got %d users without filters, want 2 human mailbox accounts", len(unfiltered))
 	}
 }

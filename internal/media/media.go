@@ -188,21 +188,17 @@ func (m *Manager) GetStorageUsage() (StorageUsage, error) {
 
 // queries holds the prepared SQL statements.
 type queries struct {
-	GetUnlinkedResourceAvatars  *sqlx.Stmt `query:"get-unlinked-resource-avatars"`
-	GetUnlinkedResourceImages   *sqlx.Stmt `query:"get-unlinked-resource-images"`
-	Insert                      *sqlx.Stmt `query:"insert-media"`
-	Get                         *sqlx.Stmt `query:"get-media"`
-	GetByUUID                   *sqlx.Stmt `query:"get-media-by-uuid"`
-	Delete                      *sqlx.Stmt `query:"delete-media"`
-	LinkMessageMedia            *sqlx.Stmt `query:"link-message-media"`
-	GetByModel                  *sqlx.Stmt `query:"get-model-media"`
-	GetUnlinkedMessageMedia     *sqlx.Stmt `query:"get-unlinked-message-media"`
-	GetUnlinkedHelpArticleMedia *sqlx.Stmt `query:"get-unlinked-help-article-media"`
-	LinkHelpArticleMedia        *sqlx.Stmt `query:"link-help-article-media"`
-	UnlinkHelpArticleMedia      *sqlx.Stmt `query:"unlink-help-article-media"`
-	ContentIDExists             *sqlx.Stmt `query:"content-id-exists"`
-	GetByContentIDs             *sqlx.Stmt `query:"get-media-by-content-ids"`
-	GetDraftInlineMedia         *sqlx.Stmt `query:"get-draft-inline-media"`
+	GetUnlinkedResourceAvatars *sqlx.Stmt `query:"get-unlinked-resource-avatars"`
+	GetUnlinkedResourceImages  *sqlx.Stmt `query:"get-unlinked-resource-images"`
+	Insert                     *sqlx.Stmt `query:"insert-media"`
+	Get                        *sqlx.Stmt `query:"get-media"`
+	Delete                     *sqlx.Stmt `query:"delete-media"`
+	LinkMessageMedia           *sqlx.Stmt `query:"link-message-media"`
+	GetByModel                 *sqlx.Stmt `query:"get-model-media"`
+	GetUnlinkedMessageMedia    *sqlx.Stmt `query:"get-unlinked-message-media"`
+	ContentIDExists            *sqlx.Stmt `query:"content-id-exists"`
+	GetByContentIDs            *sqlx.Stmt `query:"get-media-by-content-ids"`
+	GetDraftInlineMedia        *sqlx.Stmt `query:"get-draft-inline-media"`
 }
 
 // UploadAndInsert reserves durable capacity in the media table before writing
@@ -343,23 +339,6 @@ func (m *Manager) Get(id int, uuid string) (models.Media, error) {
 // PublicURL returns the stable unsigned app URL for a public media file.
 func (m *Manager) PublicURL(uuid string) string {
 	return strings.TrimRight(m.rootURL(), "/") + PublicURI + "/" + uuid
-}
-
-// LinkHelpArticleMedia links media referenced in the article content and unlinks the rest.
-func (m *Manager) LinkHelpArticleMedia(articleID int, content string) error {
-	uuids := []string{}
-	for _, match := range publicMediaURLRe.FindAllStringSubmatch(content, -1) {
-		uuids = append(uuids, match[1])
-	}
-	if _, err := m.queries.LinkHelpArticleMedia.Exec(articleID, pq.Array(uuids)); err != nil {
-		m.lo.Error("error linking help article media", "article_id", articleID, "error", err)
-		return fmt.Errorf("linking help article media: %w", err)
-	}
-	if _, err := m.queries.UnlinkHelpArticleMedia.Exec(articleID, pq.Array(uuids)); err != nil {
-		m.lo.Error("error unlinking help article media", "article_id", articleID, "error", err)
-		return fmt.Errorf("unlinking help article media: %w", err)
-	}
-	return nil
 }
 
 // ContentIDExists reports whether a media row with the given content_id is linked to a message in the given conversation. Scoped this way so an orphan media row (e.g., from a partial failure) doesn't short-circuit a retry into skipping the upload.
@@ -541,7 +520,7 @@ func (m *Manager) DeleteUnlinkedMedia(ctx context.Context) {
 
 // deleteUnlinked runs all unlinked-media sweeps.
 func (m *Manager) deleteUnlinked() {
-	for _, stmt := range []*sqlx.Stmt{m.queries.GetUnlinkedMessageMedia, m.queries.GetUnlinkedHelpArticleMedia, m.queries.GetUnlinkedResourceImages, m.queries.GetUnlinkedResourceAvatars} {
+	for _, stmt := range []*sqlx.Stmt{m.queries.GetUnlinkedMessageMedia, m.queries.GetUnlinkedResourceImages, m.queries.GetUnlinkedResourceAvatars} {
 		if err := m.deleteUnlinkedRows(stmt); err != nil {
 			m.lo.Error("error deleting unlinked media", "error", err)
 		}

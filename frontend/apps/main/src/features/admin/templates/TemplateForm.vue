@@ -4,11 +4,7 @@
       <FormItem v-auto-animate>
         <FormLabel>{{ $t('globals.terms.name') }}</FormLabel>
         <FormControl>
-          <Input
-            type="text"
-            v-bind="componentField"
-            :disabled="!isOutgoingTemplate"
-          />
+          <Input type="text" v-bind="componentField" :disabled="!isOutgoingTemplate" />
         </FormControl>
         <FormMessage />
       </FormItem>
@@ -56,15 +52,6 @@
 
     <div class="flex gap-2">
       <Button type="submit" :isLoading="isLoading"> {{ submitLabel }} </Button>
-      <Button
-        v-if="initialValues?.is_builtin && defaultBody"
-        type="button"
-        variant="outline"
-        :disabled="isLoading"
-        @click="resetToDefault"
-      >
-        {{ $t('globals.messages.resetToDefault') }}
-      </Button>
     </div>
   </form>
 </template>
@@ -75,7 +62,7 @@ import { Button } from '@shared-ui/components/ui/button/index.js'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { createFormSchema } from './formSchema.js'
-import { vAutoAnimate } from '@formkit/auto-animate/vue'
+
 import {
   FormControl,
   FormField,
@@ -89,7 +76,6 @@ import CodeEditor from '@main/components/editor/CodeEditor.vue'
 import { Checkbox } from '@shared-ui/components/ui/checkbox/index.js'
 import { Label } from '@shared-ui/components/ui/label/index.js'
 import { useI18n } from 'vue-i18n'
-import { BUILT_IN_TEMPLATE_BODIES } from './defaults.js'
 
 const props = defineProps({
   initialValues: {
@@ -130,16 +116,8 @@ const isOutgoingTemplate = computed(() => {
 })
 
 const hideSubject = computed(() => {
-  return isOutgoingTemplate.value || props.initialValues?.name === 'CSAT request'
+  return isOutgoingTemplate.value
 })
-
-const defaultBody = computed(() => {
-  return BUILT_IN_TEMPLATE_BODIES[props.initialValues?.name]
-})
-
-const resetToDefault = () => {
-  form.setFieldValue('body', defaultBody.value, false)
-}
 
 // Watch for changes in initialValues and update the form.
 watch(

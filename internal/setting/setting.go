@@ -56,8 +56,7 @@ func New(opts Opts) (*Manager, error) {
 
 	// Fields that need encryption.
 	encryptedFields := map[string]bool{
-		"notification.email.password":         true,
-		"notification.push.vapid_private_key": true,
+		"account_email.password": true,
 	}
 
 	return &Manager{

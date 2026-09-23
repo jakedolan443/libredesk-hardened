@@ -1,11 +1,11 @@
 <template>
   <router-link
-    :to="{ name: 'inbox-conversation', params: { uuid: conversationUUID, type: 'assigned' } }"
+    :to="{ name: 'inbox-conversation', params: { uuid: conversationUUID, type: 'all' } }"
     class="flex gap-4 px-5 py-4 hover:bg-accent/40 transition-colors"
   >
     <Avatar class="w-10 h-10 rounded-full shrink-0 mt-0.5">
-      <AvatarImage :src="item.contact.avatar_url || ''" class="object-cover" />
-      <AvatarFallback>{{ initials(item.contact.first_name) }}</AvatarFallback>
+      <AvatarImage :src="item.correspondent.avatar_url || ''" class="object-cover" />
+      <AvatarFallback>{{ initials(item.correspondent.first_name) }}</AvatarFallback>
     </Avatar>
 
     <div class="min-w-0 flex-1">
@@ -14,8 +14,11 @@
           <span class="font-medium text-foreground truncate">
             <HighlightedText :text="contactName" :term="term" />
           </span>
-          <span v-if="item.contact.email" class="text-muted-foreground truncate hidden sm:inline">
-            <HighlightedText :text="item.contact.email" :term="term" />
+          <span
+            v-if="item.correspondent.email"
+            class="text-muted-foreground truncate hidden sm:inline"
+          >
+            <HighlightedText :text="item.correspondent.email" :term="term" />
           </span>
         </div>
         <time
@@ -47,36 +50,11 @@
         class="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground"
       >
         <Badge v-if="status" variant="outline" class="font-normal">{{ status }}</Badge>
-        <span v-if="item.priority" class="inline-flex items-center gap-1">
-          <PriorityMarker :priority="item.priority" />
-          {{ item.priority }}
-        </span>
+
         <span class="tabular-nums">#{{ referenceNumber }}</span>
         <span v-if="item.inbox_name" class="inline-flex items-center gap-1.5 min-w-0">
-          <component
-            :is="item.inbox_channel === 'livechat' ? MessageSquare : Mail"
-            :class="METADATA_ICON_CLASS"
-            aria-hidden="true"
-          />
+          <component :is="Mail" :class="METADATA_ICON_CLASS" aria-hidden="true" />
           <span class="truncate">{{ item.inbox_name }}</span>
-        </span>
-        <span class="inline-flex items-center gap-1.5 min-w-0">
-          <UserRound :class="METADATA_ICON_CLASS" aria-hidden="true" />
-          <span class="truncate">{{ assigneeName || t('globals.terms.unassigned') }}</span>
-        </span>
-        <span v-if="item.team_name" class="inline-flex items-center gap-1.5 min-w-0">
-          <UsersRound :class="METADATA_ICON_CLASS" aria-hidden="true" />
-          <span class="truncate">{{ item.team_name }}</span>
-        </span>
-        <span v-if="item.tags?.length" class="inline-flex items-center gap-1.5 flex-wrap">
-          <Tag :class="METADATA_ICON_CLASS" aria-hidden="true" />
-          <span
-            v-for="tag in item.tags"
-            :key="tag"
-            class="rounded-md bg-secondary px-1.5 py-0.5 text-secondary-foreground"
-          >
-            {{ tag }}
-          </span>
         </span>
       </div>
     </div>
@@ -86,12 +64,10 @@
 <script setup>
 import { computed } from 'vue'
 import { format } from 'date-fns'
-import { Mail, MessageSquare, Tag, UserRound, UsersRound } from 'lucide-vue-next'
-import { useI18n } from 'vue-i18n'
+import { Mail } from 'lucide-vue-next'
 import { Avatar, AvatarFallback, AvatarImage } from '@shared-ui/components/ui/avatar'
 import { Badge } from '@shared-ui/components/ui/badge'
 import { getRelativeTime } from '@shared-ui/utils/datetime.js'
-import PriorityMarker from '@main/features/conversation/PriorityMarker.vue'
 import HighlightedText from './HighlightedText.vue'
 
 const METADATA_ICON_CLASS = 'w-3.5 h-3.5 shrink-0'
@@ -101,8 +77,6 @@ const props = defineProps({
   type: { type: String, required: true },
   term: { type: String, default: '' }
 })
-
-const { t } = useI18n()
 
 const fullName = (person) => [person?.first_name, person?.last_name].filter(Boolean).join(' ')
 const initials = (name) => (name || '?').substring(0, 2).toUpperCase()
@@ -126,7 +100,8 @@ const snippet = computed(
 const timestamp = computed(() =>
   isConversation.value ? props.item.last_message_at || props.item.created_at : props.item.created_at
 )
-const contactName = computed(() => fullName(props.item.contact))
+const contactName = computed(
+  () => fullName(props.item.correspondent) || props.item.correspondent.email
+)
 const senderName = computed(() => fullName(props.item.sender) || contactName.value)
-const assigneeName = computed(() => fullName(props.item.assignee))
 </script>

@@ -84,7 +84,6 @@ type MessageStore interface {
 // UserStore defines methods for fetching user information.
 type UserStore interface {
 	GetAgent(id int, email string) (umodels.User, error)
-	IsEmailBlocked(email string) (bool, error)
 }
 
 // Opts contains the options for initializing the inbox manager.
@@ -274,7 +273,7 @@ func (m *Manager) Create(inbox imodels.Inbox) (imodels.Inbox, error) {
 	}
 
 	var createdInbox imodels.Inbox
-	if err := m.queries.InsertInbox.Get(&createdInbox, inbox.Channel, encryptedConfig, inbox.Name, inbox.From, inbox.Enabled, inbox.CSATEnabled, inbox.PromptTagsOnReply, inbox.Secret, inbox.LinkedEmailInboxID, inbox.FromNameTemplate); err != nil {
+	if err := m.queries.InsertInbox.Get(&createdInbox, inbox.Channel, encryptedConfig, inbox.Name, inbox.From, inbox.Enabled, inbox.CSATEnabled, inbox.Secret, inbox.LinkedEmailInboxID, inbox.FromNameTemplate); err != nil {
 		m.lo.Error("error creating inbox", "error", err)
 		return imodels.Inbox{}, envelope.NewError(envelope.GeneralError, m.i18n.T("globals.messages.somethingWentWrong"), nil)
 	}
@@ -450,7 +449,7 @@ func (m *Manager) Update(id int, inbox imodels.Inbox) (imodels.Inbox, error) {
 
 	// Update the inbox in the DB.
 	var updatedInbox imodels.Inbox
-	if err := m.queries.Update.Get(&updatedInbox, id, inbox.Channel, encryptedConfig, inbox.Name, inbox.From, inbox.CSATEnabled, inbox.PromptTagsOnReply, inbox.Enabled, inbox.Secret, inbox.LinkedEmailInboxID, inbox.FromNameTemplate); err != nil {
+	if err := m.queries.Update.Get(&updatedInbox, id, inbox.Channel, encryptedConfig, inbox.Name, inbox.From, inbox.CSATEnabled, inbox.Enabled, inbox.Secret, inbox.LinkedEmailInboxID, inbox.FromNameTemplate); err != nil {
 		m.lo.Error("error updating inbox", "error", err)
 		return imodels.Inbox{}, envelope.NewError(envelope.GeneralError, m.i18n.T("globals.messages.somethingWentWrong"), nil)
 	}
@@ -502,24 +501,6 @@ func (m *Manager) UpdateConfig(id int, config json.RawMessage) error {
 		return fmt.Errorf("updating inbox config: %w", err)
 	}
 	return nil
-}
-
-// CloseLiveChatClients disconnects widget websocket clients and returns the number of inboxes closed.
-func (m *Manager) CloseLiveChatClients() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	var n int
-	for _, inb := range m.inboxes {
-		if inb.Channel() != ChannelLiveChat {
-			continue
-		}
-		if err := inb.Close(); err != nil {
-			m.lo.Error("error closing livechat inbox", "error", err)
-			continue
-		}
-		n++
-	}
-	return n
 }
 
 // stopInbox cancels the receiver for a single inbox, waits for its goroutine
